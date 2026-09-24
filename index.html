@@ -75,6 +75,7 @@
   }
 
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html { -webkit-text-size-adjust: 100%; }
   body {
     margin: 0;
@@ -242,7 +243,7 @@
   .ab button[aria-pressed="true"] .led { background: var(--on); box-shadow: 0 0 8px var(--on); }
   .ab-hint { margin: -6px 0 0; font-size: 12px; color: var(--muted); text-align: center; }
 
-  .readouts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .readouts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 0; }
   .readout {
     background: var(--raised);
     border: 1px solid var(--line);
@@ -392,9 +393,28 @@
 
   .dropping .unit { outline: 2px dashed var(--accent); outline-offset: 4px; }
 
+  .source-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .btn[aria-expanded="true"], .btn.is-live { border-color: var(--accent); background: var(--accent-soft); }
+  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--track); flex: 0 0 8px; }
+  .btn.is-live .live-dot { background: #E5484D; box-shadow: 0 0 6px #E5484D; }
+  .live-panel {
+    background: var(--raised);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: grid;
+    gap: 10px;
+  }
+  .live-panel p { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+  .live-options { display: flex; flex-wrap: wrap; gap: 8px; }
+  .live-msg { font-size: 13px; color: var(--warn); }
+  .live-msg:empty { display: none; }
+  .is-live-mode .seek input { visibility: hidden; }
+
   @media (min-width: 640px) {
     .unit { padding: 20px; gap: 16px; }
     .screen { height: 250px; }
+    .readouts { grid-template-columns: repeat(4, 1fr); }
   }
   @media (prefers-reduced-motion: reduce) {
     .switch-track, .switch-track::after { transition: none; }
@@ -415,11 +435,24 @@
         <span class="source-name" id="sourceName">デモ曲を準備しています…</span>
         <span class="source-meta" id="sourceMeta">&nbsp;</span>
       </div>
-      <label class="btn" for="fileInput">
-        <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3a1 1 0 0 1 1 1v9.59l3.3-3.3a1 1 0 1 1 1.4 1.42l-5 5a1 1 0 0 1-1.4 0l-5-5a1 1 0 1 1 1.4-1.42l3.3 3.3V4a1 1 0 0 1 1-1Zm-8 15a1 1 0 0 1 1 1v1h14v-1a1 1 0 1 1 2 0v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1Z"/></svg>
-        自分の曲を開く
-      </label>
+      <div class="source-actions">
+        <label class="btn" for="fileInput">
+          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3a1 1 0 0 1 1 1v9.59l3.3-3.3a1 1 0 1 1 1.4 1.42l-5 5a1 1 0 0 1-1.4 0l-5-5a1 1 0 1 1 1.4-1.42l3.3 3.3V4a1 1 0 0 1 1-1Zm-8 15a1 1 0 0 1 1 1v1h14v-1a1 1 0 1 1 2 0v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1Z"/></svg>
+          自分の曲を開く
+        </label>
+        <button class="btn" type="button" id="liveBtn" aria-expanded="false" aria-controls="livePanel"><i class="live-dot"></i><span id="liveBtnText">ライブ入力</span></button>
+      </div>
       <input class="visually-hidden" type="file" id="fileInput" accept="audio/*,.mp3,.m4a,.aac,.wav,.aif,.aiff,.flac,.caf">
+    </div>
+
+    <div class="live-panel" id="livePanel" hidden>
+      <p>入ってくる音をその場でリファインします。処理そのものの遅れは 0 ms です。スピーカーだとハウリングするので、必ずヘッドホンで聴いてください。</p>
+      <div class="live-options">
+        <button class="btn" type="button" id="liveMic">マイク・外部入力</button>
+        <button class="btn" type="button" id="liveTab">タブや画面の音（パソコンの Chrome）</button>
+      </div>
+      <p>タブの音を選ぶと、YouTube や Spotify Web Player などブラウザで流している曲をそのまま処理できます。共有画面で「タブの音声を共有」をオンにしてください。</p>
+      <div class="live-msg" id="liveMsg" role="status" aria-live="polite"></div>
     </div>
 
     <div class="screen">
@@ -451,6 +484,7 @@
       <div class="readout"><dt>16kHz以上</dt><dd id="rHf">—</dd></div>
       <div class="readout"><dt>左右の広がり</dt><dd id="rWidth">—</dd></div>
       <div class="readout"><dt>音量あわせ</dt><dd id="rTrim">—</dd></div>
+      <div class="readout"><dt>遅延（推定）</dt><dd id="rLatency">—</dd></div>
     </dl>
   </section>
 
@@ -496,6 +530,8 @@
       <li><strong>高域補完</strong>は、残っている5kHz以上の成分から倍音を作り、MP3やAACで削られた16kHz以上を埋め直す処理です。失われた音を推定して作り直すもので、元の録音を完全に復元するものではありません。</li>
       <li><strong>空間</strong>はヘッドホン・イヤホン向けです。スピーカーで聴いているような左右の回り込みと部屋の響きを加えます。iPhoneの空間オーディオのような、頭の向きに合わせた追従はしません。</li>
       <li>Apple MusicやSpotifyで再生中の音には直接かけられません。iPhoneは他のアプリの音を加工する仕組みを公開していないためです。著作権保護（DRM）付きの曲も読み込めません。</li>
+      <li><strong>ライブ入力</strong>は、マイク・外部入力（iPhoneでも可）と、パソコンの Chrome / Edge でのタブや画面の音に対応します。処理による遅れは 0 ms で、残りは端末の入出力の遅れです。Bluetooth イヤホンはそれ自体に 0.1〜0.2 秒ほどの遅れがあるので、遅延を最小にしたいときは有線をおすすめします。</li>
+      <li>ライブ入力は、マイクを使える通常の Web ページとして開いたときに動きます。Claude のプレビュー画面の中ではマイクや画面共有が使えません。</li>
       <li>最後にリミッターを通すので、設定を強めても音割れしません。</li>
     </ul>
   </section>
@@ -655,11 +691,102 @@
     { id: 'natural', label: 'ナチュラル', s: { hf: 0.35, clarity: 0.3, bass: 0.2, space: 0.15, width: 0.2, punch: 0.15 } },
   ];
 
-  // Delay of the processed path (two compressor look-aheads). The original is
-  // delayed by the same amount so switching A/B lands on the same instant.
-  const LATENCY = 0.012;
+  // ------------------------------------------------------------
+  //  Zero-latency dynamics (AudioWorklet): a feed-forward glue compressor,
+  //  +2 dB, then a peak limiter with instant attack and 10 ms hold. No
+  //  look-ahead, so the processed path adds no delay at all. The limiter
+  //  gain never exceeds ceiling/peak, so the output never passes -1 dBFS.
+  // ------------------------------------------------------------
+  const DYNAMICS_WORKLET = `
+class RefinerDynamics extends AudioWorkletProcessor {
+  static get parameterDescriptors() {
+    return [
+      { name: 'threshold', defaultValue: 0, minValue: -60, maxValue: 0, automationRate: 'k-rate' },
+      { name: 'ratio', defaultValue: 1, minValue: 1, maxValue: 20, automationRate: 'k-rate' },
+    ];
+  }
+  constructor() {
+    super();
+    this.atk = Math.exp(-1 / (0.012 * sampleRate));
+    this.rel = Math.exp(-1 / (0.25 * sampleRate));
+    this.limRel = Math.exp(-1 / (0.1 * sampleRate));
+    this.holdLen = Math.round(0.01 * sampleRate);
+    this.post = Math.pow(10, 2 / 20);
+    this.ceiling = Math.pow(10, -1 / 20);
+    this.knee = 10;
+    this.gr = 0;
+    this.lim = 1;
+    this.hold = 0;
+  }
+  curve(x, t, r) {
+    const d = x - t, w = this.knee;
+    if (2 * d < -w) return x;
+    if (2 * Math.abs(d) <= w) { const k = d + w / 2; return x + (1 / r - 1) * k * k / (2 * w); }
+    return t + d / r;
+  }
+  process(inputs, outputs, params) {
+    const input = inputs[0], output = outputs[0];
+    if (!input || input.length === 0) return true;
+    const inL = input[0], inR = input[1] || input[0];
+    const outL = output[0], outR = output[1] || output[0];
+    const t = params.threshold[0], r = Math.max(1, params.ratio[0]);
+    // Same automatic make-up rule as the Web Audio DynamicsCompressorNode.
+    const makeup = Math.pow(10, -0.6 * this.curve(0, t, r) / 20) * this.post;
+    let gr = this.gr, lim = this.lim, hold = this.hold;
+    for (let i = 0; i < outL.length; i++) {
+      const l = inL[i], rr = inR[i];
+      const peak = Math.max(Math.abs(l), Math.abs(rr));
+      const xdb = peak > 1e-6 ? 20 * Math.log10(peak) : -120;
+      const target = this.curve(xdb, t, r) - xdb;
+      gr = target < gr ? this.atk * gr + (1 - this.atk) * target : this.rel * gr + (1 - this.rel) * target;
+      const g = Math.pow(10, gr / 20) * makeup;
+      const yl = l * g, yr = rr * g;
+      const p = Math.max(Math.abs(yl), Math.abs(yr));
+      const need = p > this.ceiling ? this.ceiling / p : 1;
+      if (need < lim) { lim = need; hold = this.holdLen; }
+      else if (hold > 0) hold--;
+      else lim = this.limRel * lim + (1 - this.limRel) * need;
+      outL[i] = yl * lim;
+      outR[i] = yr * lim;
+    }
+    this.gr = gr; this.lim = lim; this.hold = hold;
+    return true;
+  }
+}
+registerProcessor('refiner-dynamics', RefinerDynamics);
+`;
 
-  function buildEnhancer(ctx, settings) {
+  const workletUrls = (() => {
+    const urls = [];
+    try { urls.push(URL.createObjectURL(new Blob([DYNAMICS_WORKLET], { type: 'text/javascript' }))); } catch { /* no blob URLs */ }
+    urls.push('data:text/javascript;charset=utf-8,' + encodeURIComponent(DYNAMICS_WORKLET));
+    return urls;
+  })();
+  const workletLoads = new WeakMap();
+  function loadWorklet(ctx) {
+    if (!workletLoads.has(ctx)) {
+      workletLoads.set(ctx, (async () => {
+        if (!ctx.audioWorklet || typeof AudioWorkletNode === 'undefined') return false;
+        for (const url of workletUrls) {
+          try {
+            await ctx.audioWorklet.addModule(url);
+            return true;
+          } catch { /* try the next form, then fall back to native nodes */ }
+        }
+        return false;
+      })());
+    }
+    return workletLoads.get(ctx);
+  }
+
+  // Uses the zero-latency worklet when the browser allows it, otherwise the
+  // built-in compressor nodes (which look ahead 6 ms each, 12 ms in total).
+  async function createEnhancer(ctx, settings, opts = {}) {
+    const useWorklet = !opts.native && (await loadWorklet(ctx));
+    return buildEnhancer(ctx, settings, useWorklet);
+  }
+
+  function buildEnhancer(ctx, settings, useWorklet) {
     const input = forceChannels(gainNode(ctx, dbToGain(-4)), 2);
 
     // Tone
@@ -731,20 +858,41 @@
     link(sumB, revIn, revPre, biquad(ctx, 'highpass', 220), conv, biquad(ctx, 'lowpass', 7500), revGain, sumC);
 
     // Dynamics and output protection
-    const glue = ctx.createDynamicsCompressor();
-    glue.knee.value = 10;
-    glue.attack.value = 0.015;
-    glue.release.value = 0.25;
-    const post = gainNode(ctx, dbToGain(2));
-    const limiter = ctx.createDynamicsCompressor();
-    limiter.threshold.value = -2.5;
-    limiter.knee.value = 0;
-    limiter.ratio.value = 20;
-    limiter.attack.value = 0.001;
-    limiter.release.value = 0.12;
+    let dyn;
+    if (useWorklet) {
+      const node = new AudioWorkletNode(ctx, 'refiner-dynamics', {
+        numberOfInputs: 1,
+        numberOfOutputs: 1,
+        outputChannelCount: [2],
+        channelCount: 2,
+        channelCountMode: 'explicit',
+        channelInterpretation: 'speakers',
+      });
+      dyn = {
+        input: node,
+        output: node,
+        threshold: node.parameters.get('threshold'),
+        ratio: node.parameters.get('ratio'),
+        latency: 0,
+      };
+    } else {
+      const glue = ctx.createDynamicsCompressor();
+      glue.knee.value = 10;
+      glue.attack.value = 0.015;
+      glue.release.value = 0.25;
+      const post = gainNode(ctx, dbToGain(2));
+      const limiter = ctx.createDynamicsCompressor();
+      limiter.threshold.value = -2.5;
+      limiter.knee.value = 0;
+      limiter.ratio.value = 20;
+      limiter.attack.value = 0.001;
+      limiter.release.value = 0.12;
+      link(glue, post, limiter);
+      dyn = { input: glue, output: limiter, threshold: glue.threshold, ratio: glue.ratio, latency: 0.012 };
+    }
     const clipIn = gainNode(ctx, 0.5);
     const clip = shaper(ctx, SOFT_CLIP, 'none');
-    link(sumC, glue, post, limiter, clipIn, clip);
+    link(sumC, dyn, clipIn, clip);
 
     function apply(s, smooth = true) {
       const t = ctx.currentTime;
@@ -764,11 +912,12 @@
       set(xfGain.gain, xf);
       set(direct.gain, 1 / (1 + xf * 0.6));
       set(revGain.gain, 0.3 * s.space);
-      set(glue.threshold, -24 * s.punch);
-      set(glue.ratio, 1 + 2.5 * s.punch);
+      set(dyn.threshold, -24 * s.punch);
+      set(dyn.ratio, 1 + 2.5 * s.punch);
     }
     apply(settings, false);
-    return { input, output: clip, apply };
+    // latency: how far the processed path trails the input, in seconds.
+    return { input, output: clip, apply, latency: dyn.latency, engine: useWorklet ? 'worklet' : 'native' };
   }
 
   // Stereo analysers behind a filter chain; returns per-channel sample buffers.
@@ -824,14 +973,14 @@
   // ============================================================
   //  Offline rendering: whole-file export and still previews
   // ============================================================
-  async function renderEnhanced(buffer, settings, onProgress) {
+  async function renderEnhanced(buffer, settings, onProgress, opts = {}) {
     const sr = buffer.sampleRate;
     const tail = 1.2;
     const total = buffer.duration + tail;
     const off = new OfflineAudioContext(2, Math.ceil(total * sr), sr);
     const src = off.createBufferSource();
     src.buffer = buffer;
-    const fx = buildEnhancer(off, settings);
+    const fx = await createEnhancer(off, settings, opts);
     src.connect(fx.input);
     fx.output.connect(off.destination);
     src.start(0);
@@ -843,7 +992,7 @@
     }
     const rendered = await off.startRendering();
     // Drop the processing delay at the front so the file lines up with the original.
-    const skip = Math.round(LATENCY * sr);
+    const skip = Math.round(fx.latency * sr);
     const out = new AudioBuffer({ length: rendered.length - skip, numberOfChannels: 2, sampleRate: sr });
     for (let c = 0; c < 2; c++) out.copyToChannel(rendered.getChannelData(c).subarray(skip), c);
     return out;
@@ -859,9 +1008,9 @@
     src.buffer = buffer;
     src.loop = true;
     const bus = forceChannels(gainNode(off), 2);
+    const fx = await createEnhancer(off, settings);
     const dryDelay = off.createDelay(0.1);
-    dryDelay.delayTime.value = LATENCY;
-    const fx = buildEnhancer(off, settings);
+    dryDelay.delayTime.value = fx.latency;
     src.connect(bus);
     bus.connect(dryDelay);
     bus.connect(fx.input);
@@ -1174,7 +1323,7 @@
   }
 
   // Exposed for the automated checks in tests/verify-dsp.mjs
-  window.__refiner = { buildEnhancer, renderEnhanced, previewSnapshot, makeDemo, encodeWav16, zipSingle, LATENCY, PRESETS };
+  window.__refiner = { createEnhancer, renderEnhanced, previewSnapshot, makeDemo, encodeWav16, zipSingle, PRESETS };
 
   // ============================================================
   //  App
@@ -1206,26 +1355,26 @@
   };
 
   const AC = window.AudioContext || window.webkitAudioContext;
-  const ac = new AC({ latencyHint: 'playback' });
+  // "interactive" asks the browser for its smallest safe output buffer.
+  const ac = new AC({ latencyHint: 'interactive' });
 
-  // Live graph: bus -> (delayed original | enhancer) -> A/B crossfade -> speakers
+  // Playback graph: bus -> (original, delayed to match | enhancer) -> A/B crossfade -> speakers.
+  // The enhancer is attached in boot() once the zero-latency worklet has loaded.
   const bus = forceChannels(gainNode(ac), 2);
   const dryDelay = ac.createDelay(0.1);
-  dryDelay.delayTime.value = LATENCY;
   const dryGain = gainNode(ac, 0);
-  const fx = buildEnhancer(ac, state.settings);
   const matchTrim = gainNode(ac, 1);
   const wetGain = gainNode(ac, 1);
   const master = gainNode(ac, 1);
   bus.connect(dryDelay);
   link(dryDelay, dryGain, master);
-  bus.connect(fx.input);
-  link(fx.output, matchTrim, wetGain, master);
+  link(matchTrim, wetGain, master);
   master.connect(ac.destination);
   const liveSpecDry = makeSpectrum(ac, dryDelay);
   const liveSpecWet = makeSpectrum(ac, matchTrim);
   const liveMeterDry = makeMeter(ac, dryDelay);
-  const liveMeterWet = makeMeter(ac, fx.output);
+  let fx = null;
+  let liveMeterWet = null;
 
   // ---------- controls ----------
   const presetBox = $('presets');
@@ -1285,9 +1434,9 @@
 
   let previewTimer = 0;
   function settingsChanged() {
-    fx.apply(state.settings);
+    if (fx) fx.apply(state.settings);
     persist();
-    if (!state.playing) {
+    if (!state.playing && !state.live) {
       clearTimeout(previewTimer);
       previewTimer = setTimeout(refreshPreview, 180);
     }
@@ -1298,7 +1447,7 @@
     persist();
     if (!state.match) matchTrim.gain.setTargetAtTime(1, ac.currentTime, 0.1);
     else if (loud.dry > 0 && loud.wet > 0) applyTrim();
-    if (!state.playing) drawStill();
+    if (!state.playing && !state.live) drawStill();
   });
   $('loopToggle').addEventListener('change', (e) => {
     state.loop = e.target.checked;
@@ -1329,6 +1478,11 @@
     return (state.offset + (ac.currentTime - state.startedAt)) % state.buffer.duration;
   }
   function setPlayIcon(playing) {
+    if (playing === 'stop') {
+      $('playBtn').setAttribute('aria-label', 'ライブ入力を止める');
+      $('playIcon').innerHTML = '<rect x="6" y="6" width="12" height="12" rx="2"/>';
+      return;
+    }
     $('playBtn').setAttribute('aria-label', playing ? '一時停止' : '再生');
     $('playIcon').innerHTML = playing
       ? '<path d="M7 4h3.5a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm6.5 0H17a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3.5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/>'
@@ -1361,7 +1515,8 @@
     src.disconnect();
   }
   async function play() {
-    if (!state.buffer) return;
+    if (!state.buffer || !fx) return;
+    if (state.live) stopLive();
     try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* not supported */ }
     await ac.resume();
     startSource(state.offset % state.buffer.duration);
@@ -1377,7 +1532,12 @@
     setPlayIcon(false);
     stillAfter = performance.now() + 1500;
   }
-  $('playBtn').addEventListener('click', () => (state.playing ? pause() : play()));
+  const togglePlay = () => {
+    if (state.live) stopLive();
+    else if (state.playing) pause();
+    else play();
+  };
+  $('playBtn').addEventListener('click', togglePlay);
 
   const seek = $('seek');
   function setSeek(v) {
@@ -1409,15 +1569,17 @@
       setMode(state.mode === 'wet' ? 'dry' : 'wet');
     } else if (e.key === ' ' && (e.target === document.body || e.target === document.documentElement)) {
       e.preventDefault();
-      state.playing ? pause() : play();
+      togglePlay();
     }
   });
 
   // ---------- loading audio ----------
   function setSource(buffer, name, meta) {
+    if (state.live) stopLive();
     if (state.playing) pause();
     state.buffer = buffer;
     state.name = name;
+    state.meta = meta;
     state.offset = 0;
     $('sourceName').textContent = name;
     $('sourceMeta').textContent = meta;
@@ -1454,6 +1616,124 @@
     if (f) loadFile(f);
   });
 
+  // ---------- live input ----------
+  const inArtifact = !!(window.claude && typeof window.claude.use === 'function');
+  const liveBtn = $('liveBtn');
+  const livePanel = $('livePanel');
+  const liveMsg = $('liveMsg');
+  if (!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)) $('liveTab').hidden = true;
+
+  liveBtn.addEventListener('click', () => {
+    if (state.live) {
+      stopLive();
+      return;
+    }
+    const open = livePanel.hidden;
+    livePanel.hidden = !open;
+    liveBtn.setAttribute('aria-expanded', String(open));
+  });
+  $('liveMic').addEventListener('click', () => startLive('mic'));
+  $('liveTab').addEventListener('click', () => startLive('tab'));
+
+  function liveError(err, kind) {
+    const name = err && err.name;
+    if (!navigator.mediaDevices) return 'この開き方では入力を使えません。https のページとして開いてください。';
+    if (name === 'NotAllowedError' || name === 'SecurityError') {
+      if (inArtifact) return 'Claude のプレビュー画面の中ではマイクや画面共有を使えません。index.html を通常の Web ページとして開いてください。';
+      return kind === 'mic'
+        ? 'マイクの使用が許可されませんでした。ブラウザの設定でこのページのマイクを許可してください。'
+        : '画面共有がキャンセルされました。';
+    }
+    if (name === 'NotFoundError' || name === 'OverconstrainedError') return '使える入力が見つかりませんでした。マイクや入力機器の接続を確認してください。';
+    if (err && err.message === 'no-audio') return '音声が共有されませんでした。共有するときに「タブの音声も共有する」をオンにしてください。';
+    return '入力を開始できませんでした：' + (err && err.message ? err.message : String(err));
+  }
+
+  async function startLive(kind) {
+    liveMsg.textContent = '';
+    if (!fx) return;
+    let stream = null;
+    try {
+      if (!navigator.mediaDevices) throw new Error('insecure');
+      // Raw signal: voice-call processing would smear music.
+      const raw = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+      if (kind === 'mic') {
+        try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch { /* not supported */ }
+        stream = await navigator.mediaDevices.getUserMedia({ audio: { ...raw, channelCount: { ideal: 2 }, latency: { ideal: 0 } } });
+      } else {
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: { ...raw, suppressLocalAudioPlayback: true },
+          systemAudio: 'include',
+          selfBrowserSurface: 'exclude',
+        });
+        stream.getVideoTracks().forEach((t) => t.stop());
+        if (!stream.getAudioTracks().length) throw new Error('no-audio');
+      }
+    } catch (err) {
+      if (stream) stream.getTracks().forEach((t) => t.stop());
+      try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* not supported */ }
+      liveMsg.textContent = liveError(err, kind);
+      return;
+    }
+    if (state.playing) pause();
+    await ac.resume();
+    const track = stream.getAudioTracks()[0];
+    const node = ac.createMediaStreamSource(stream);
+    node.connect(bus);
+    const ts = track.getSettings ? track.getSettings() : {};
+    state.live = { kind, stream, node, inputLatency: typeof ts.latency === 'number' ? ts.latency : 0 };
+    track.addEventListener('ended', stopLive);
+    loud.dry = loud.wet = 0;
+    app.classList.add('is-live-mode');
+    livePanel.hidden = true;
+    liveBtn.setAttribute('aria-expanded', 'false');
+    liveBtn.classList.add('is-live');
+    $('liveBtnText').textContent = 'ライブ入力を止める';
+    $('sourceName').textContent = kind === 'mic' ? 'ライブ入力：マイク・外部入力' : 'ライブ入力：タブ・画面の音';
+    $('timeNow').textContent = 'LIVE';
+    $('timeTotal').textContent = '';
+    seek.disabled = true;
+    $('exportBtn').disabled = true;
+    setPlayIcon('stop');
+    $('screenMsg').hidden = true;
+    updateLatency();
+    kickLoop();
+  }
+
+  function stopLive() {
+    if (!state.live) return;
+    const { stream, node } = state.live;
+    state.live = null;
+    node.disconnect();
+    stream.getTracks().forEach((t) => t.stop());
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* not supported */ }
+    app.classList.remove('is-live-mode');
+    liveBtn.classList.remove('is-live');
+    $('liveBtnText').textContent = 'ライブ入力';
+    seek.disabled = false;
+    $('exportBtn').disabled = false;
+    setPlayIcon(false);
+    loud.dry = loud.wet = 0;
+    stillAfter = performance.now() + 800;
+    if (state.buffer) {
+      $('sourceName').textContent = state.name;
+      $('sourceMeta').textContent = state.meta;
+      $('timeNow').textContent = fmt(state.offset);
+      $('timeTotal').textContent = fmt(state.buffer.duration);
+    }
+  }
+
+  function updateLatency() {
+    const proc = fx ? fx.latency : 0;
+    const io = (ac.baseLatency || 0) + (ac.outputLatency || 0) + (state.live ? state.live.inputLatency : 0);
+    const ms = (v) => Math.round(v * 1000);
+    $('rLatency').textContent = `約 ${ms(proc + io)} ms`;
+    if (state.live) {
+      $('sourceMeta').textContent = `リアルタイム処理中 · 処理の遅れ ${ms(proc)} ms · 入出力を含め約 ${ms(proc + io)} ms`;
+    }
+  }
+
   // ---------- loudness matching ----------
   const loud = { dry: 0, wet: 0, trim: 1, dm: 0, ds: 0, wm: 0, ws: 0 };
   function applyTrim() {
@@ -1461,6 +1741,7 @@
     if (state.match) matchTrim.gain.setTargetAtTime(loud.trim, ac.currentTime, 0.35);
   }
   function measureLive() {
+    if (!liveMeterWet) return;
     const d = liveMeterDry.read();
     const w = liveMeterWet.read();
     if (d.e < 1e-7) return; // silence: keep the last estimate
@@ -1604,6 +1885,7 @@
     const pct = (m, s) => (m + s > 0 ? Math.round((100 * s) / (m + s)) : 0);
     if (lv && lv.dm + lv.ds > 0) $('rWidth').textContent = `${pct(lv.dm, lv.ds)}% → ${pct(lv.wm, lv.ws)}%`;
     $('rTrim').textContent = state.match ? (gainToDb(loud.trim) >= 0 ? '+' : '−') + Math.abs(gainToDb(loud.trim)).toFixed(1) + ' dB' : 'オフ';
+    updateLatency();
   }
 
   // Still picture (before playback / while paused), from an offline preview.
@@ -1622,7 +1904,7 @@
     }
     if (seq !== previewSeq) return;
     still = snap;
-    if (state.playing) return;
+    if (state.playing || state.live) return;
     const lv = snap.levels;
     if (lv.dry > 0 && lv.wet > 0) {
       loud.dry = lv.dry; loud.wet = lv.wet;
@@ -1646,12 +1928,13 @@
   let stillAfter = 0;
   let lastMeter = 0;
   function frame(now) {
-    if (!state.playing && now > stillAfter) {
+    const running = state.playing || state.live;
+    if (!running && now > stillAfter) {
       looping = false;
       refreshPreview();
       return;
     }
-    if (state.buffer && !state.seeking) {
+    if (state.buffer && !state.seeking && !state.live) {
       const pos = position();
       setSeek(Math.round((pos / state.buffer.duration) * 1000));
       $('timeNow').textContent = fmt(pos);
@@ -1659,7 +1942,7 @@
     liveSpecDry.getFloatFrequencyData(liveDry);
     liveSpecWet.getFloatFrequencyData(liveWet);
     drawSpectrum(liveDry, liveWet, ac.sampleRate, 0);
-    if (state.playing && now - lastMeter > 100) {
+    if (running && now - lastMeter > 100) {
       lastMeter = now;
       measureLive();
       updateReadouts(liveDry, liveWet, ac.sampleRate, 0, loud);
@@ -1678,7 +1961,7 @@
     : Promise.resolve(null);
 
   $('exportBtn').addEventListener('click', async () => {
-    if (!state.buffer) return;
+    if (!state.buffer || state.live) return;
     const btn = $('exportBtn');
     const status = $('exportStatus');
     status.classList.remove('is-error');
@@ -1727,21 +2010,31 @@
       status.classList.add('is-error');
       status.textContent = '書き出しに失敗しました：' + (err && err.message ? err.message : String(err));
     } finally {
-      btn.disabled = false;
+      btn.disabled = !!state.live;
     }
   });
 
   // ---------- boot ----------
-  syncControls();
-  setMode('wet');
-  setPlayIcon(false);
-  makeDemo(ac.sampleRate).then((buf) => {
-    if (state.buffer) return; // user already picked a file
-    setSource(buf, 'デモ曲（合成音）', 'MP3 128kbps 相当に劣化させた状態 · 16kHz以上なし · ' + fmt(buf.duration));
-  }).catch((err) => {
-    $('sourceName').textContent = 'デモ曲を作れませんでした。自分の曲を開いてください。';
-    $('screenMsg').textContent = String(err && err.message ? err.message : err);
-  });
+  async function boot() {
+    syncControls();
+    setMode('wet');
+    setPlayIcon(false);
+    fx = await createEnhancer(ac, state.settings);
+    dryDelay.delayTime.value = fx.latency;
+    bus.connect(fx.input);
+    fx.output.connect(matchTrim);
+    liveMeterWet = makeMeter(ac, fx.output);
+    window.__refiner.engine = fx.engine;
+    updateLatency();
+    try {
+      const buf = await makeDemo(ac.sampleRate);
+      if (!state.buffer) setSource(buf, 'デモ曲（合成音）', 'MP3 128kbps 相当に劣化させた状態 · 16kHz以上なし · ' + fmt(buf.duration));
+    } catch (err) {
+      $('sourceName').textContent = 'デモ曲を作れませんでした。自分の曲を開いてください。';
+      $('screenMsg').textContent = String(err && err.message ? err.message : err);
+    }
+  }
+  boot();
 })();
 </script>
 </body>

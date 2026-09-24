@@ -6,10 +6,11 @@
 // Needs Playwright (a local install, or the global one) and Chromium.
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
-import { writeFileSync, mkdtempSync } from 'node:fs';
+import { writeFileSync, mkdtempSync, readFileSync } from 'node:fs';
+import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 async function loadPlaywright() {
   try {
@@ -21,7 +22,14 @@ async function loadPlaywright() {
 }
 
 const here = dirname(fileURLToPath(import.meta.url));
-const pageUrl = pathToFileURL(join(here, '..', 'index.html')).href;
+// Served from localhost: a secure context, so the microphone path can be exercised.
+const html = readFileSync(join(here, '..', 'index.html'));
+const server = createServer((req, res) => {
+  res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+  res.end(html);
+});
+await new Promise((r) => server.listen(0, '127.0.0.1', r));
+const pageUrl = `http://127.0.0.1:${server.address().port}/`;
 
 let failures = 0;
 function check(name, ok, detail) {
@@ -30,7 +38,9 @@ function check(name, ok, detail) {
 }
 
 const { chromium } = await loadPlaywright();
-const browser = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
+const browser = await chromium.launch({
+  args: ['--autoplay-policy=no-user-gesture-required', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'],
+});
 const page = await browser.newPage({ viewport: { width: 390, height: 900 }, deviceScaleFactor: 2 });
 // Web fonts are cosmetic; keep the test offline and deterministic.
 const FONT_HOSTS = /fonts\.(googleapis|gstatic)\.com/;
@@ -43,7 +53,7 @@ page.on('console', (m) => {
 });
 page.on('pageerror', (e) => consoleErrors.push(String(e)));
 await page.goto(pageUrl);
-await page.waitForFunction(() => window.__refiner);
+await page.waitForFunction(() => window.__refiner && window.__refiner.engine);
 
 const r = await page.evaluate(async () => {
   const R = window.__refiner;
@@ -126,6 +136,29 @@ const r = await page.evaluate(async () => {
   out.spaceOnly = analyse(await R.renderEnhanced(demo, { ...zero, space: 1 }), ...span);
   out.bassOnly = analyse(await R.renderEnhanced(demo, { ...zero, bass: 1 }), ...span);
 
+  // Raw delay of the processed path, measured by cross-correlation (no compensation).
+  async function measureDelay(opts) {
+    const off = new OfflineAudioContext(2, sr * 6, sr);
+    const src = off.createBufferSource();
+    src.buffer = demo;
+    const fx = await R.createEnhancer(off, zero, opts);
+    src.connect(fx.input);
+    fx.output.connect(off.destination);
+    src.start(0);
+    const outBuf = await off.startRendering();
+    const a = demo.getChannelData(0), b = outBuf.getChannelData(0);
+    let best = -Infinity, lag = 0;
+    for (let l = 0; l <= 1200; l++) {
+      let s = 0;
+      for (let i = sr * 3; i < sr * 5; i += 2) s += a[i] * b[i + l];
+      if (s > best) { best = s; lag = l; }
+    }
+    return { lag, engine: fx.engine, reported: Math.round(fx.latency * sr) };
+  }
+  out.delayWorklet = await measureDelay({});
+  out.delayNative = await measureDelay({ native: true });
+  out.native = analyse(await R.renderEnhanced(demo, rec, null, { native: true }), ...span);
+
   // Alignment: with everything off the output should line up with the input.
   {
     const a = demo.getChannelData(0), b = zeroBuf.getChannelData(0);
@@ -198,7 +231,14 @@ for (const k of ['demo', 'zero', 'rec', 'hfOnly', 'widthOnly', 'spaceOnly', 'bas
   const m = r[k];
   console.log(`${k.padEnd(10)} peak ${m.peak.toFixed(3)}  rms ${f(m.rmsDb)}  16-20k ${f(m.hi)}  10-16k ${f(m.air)}  1-4k ${f(m.mid)}  40-120 ${f(m.bass)}  side ${(m.sideShare * 100).toFixed(0)}%`);
 }
-console.log(`alignment lag ${r.lag} samples, correlation ${r.corr.toFixed(4)}\n`);
+console.log(`alignment lag ${r.lag} samples, correlation ${r.corr.toFixed(4)}`);
+console.log(`processing delay: worklet ${r.delayWorklet.lag} samples (${(r.delayWorklet.lag / 48).toFixed(2)} ms), native ${r.delayNative.lag} samples (${(r.delayNative.lag / 48).toFixed(2)} ms)\n`);
+
+check('ゼロ遅延エンジン (AudioWorklet) が使われる', r.delayWorklet.engine === 'worklet');
+check('処理による遅れが 0.1ms 未満', r.delayWorklet.lag <= 4, `${r.delayWorklet.lag} samples`);
+check('従来エンジンの遅れは申告どおり (約12ms)', Math.abs(r.delayNative.lag - r.delayNative.reported) <= 3, `${r.delayNative.lag} vs ${r.delayNative.reported}`);
+check('従来エンジンでも補完・音割れなし', r.native.hi - r.demo.hi > 20 && r.native.peak <= 1 && !r.native.nan, `peak ${r.native.peak.toFixed(4)}`);
+check('2つのエンジンの音量差が 1.5dB 以内', Math.abs(r.native.rmsDb - r.rec.rmsDb) < 1.5, `${(r.rec.rmsDb - r.native.rmsDb).toFixed(2)} dB`);
 
 // The demo is band-limited at 15.5 kHz like a 128 kbps MP3; restoration must refill 16-20 kHz.
 check('高域補完: 16-20kHz が大きく増える (おすすめ)', r.rec.hi - r.demo.hi > 20, `+${f(r.rec.hi - r.demo.hi)} dB`);
@@ -213,7 +253,7 @@ check('書き出しの時間ずれがない', Math.abs(r.lag) <= 2, `${r.lag} sa
 for (const k of ['demo', 'zero', 'rec', 'hfOnly', 'widthOnly', 'spaceOnly', 'bassOnly', 'hot', 'mono', 'sr441']) {
   check(`音割れなし・NaNなし (${k})`, !r[k].nan && r[k].peak <= 1.0, `peak ${r[k].peak.toFixed(4)}`);
 }
-check('最大設定＋爆音素材でも 0dBFS を超えない', r.hot.peak <= 1.0 && !r.hot.nan, `peak ${r.hot.peak.toFixed(4)}`);
+check('最大設定＋爆音素材でも −1dBFS (0.891) を超えない', r.hot.peak <= 0.8914 && !r.hot.nan, `peak ${r.hot.peak.toFixed(4)}`);
 check('おすすめ設定の音量変化は ±4dB 以内', Math.abs(r.rec.rmsDb - r.demo.rmsDb) < 4, `${f(r.rec.rmsDb - r.demo.rmsDb)} dB`);
 check('モノラル入力 → ステレオ出力', r.mono.channels === 2 && !r.mono.nan);
 check('44.1kHz 素材でも動く', r.sr441.hi - r.demo.hi > 15 && !r.sr441.nan, `16-20k ${f(r.sr441.hi)}`);
@@ -258,9 +298,38 @@ await page.waitForTimeout(600);
 const playing = await page.evaluate(() => document.getElementById('playBtn').getAttribute('aria-label'));
 check('再生ボタンで再生状態になる', playing === '一時停止', playing);
 await page.screenshot({ path: join(dir, 'playing.png') });
+
+await page.click('#liveBtn');
+await page.click('#liveMic');
+await page.waitForFunction(() => document.getElementById('sourceName').textContent.startsWith('ライブ入力'), null, { timeout: 5000 });
+await page.waitForTimeout(1500);
+const live = await page.evaluate(() => ({
+  name: document.getElementById('sourceName').textContent,
+  meta: document.getElementById('sourceMeta').textContent,
+  button: document.getElementById('playBtn').getAttribute('aria-label'),
+  latency: document.getElementById('rLatency').textContent,
+  msg: document.getElementById('liveMsg').textContent,
+  panelShown: document.getElementById('livePanel').offsetParent !== null,
+  overlayShown: document.getElementById('screenMsg').offsetParent !== null,
+}));
+check('ライブ開始後はパネルと「解析中」表示が消える', !live.panelShown && !live.overlayShown, `panel ${live.panelShown}, overlay ${live.overlayShown}`);
+check('ライブ入力（マイク）が始まる', live.name === 'ライブ入力：マイク・外部入力' && live.button === 'ライブ入力を止める', live.msg || live.name);
+check('ライブ中は処理遅延 0 ms と表示', live.meta.includes('処理の遅れ 0 ms'), live.meta);
+check('遅延の推定値が出る', /^約 \d+ ms$/.test(live.latency), live.latency);
+await page.click('#abDry');
+await page.waitForTimeout(200);
+await page.click('#abWet');
+await page.screenshot({ path: join(dir, 'live.png') });
+await page.click('#playBtn');
+const after = await page.evaluate(() => ({
+  name: document.getElementById('sourceName').textContent,
+  button: document.getElementById('playBtn').getAttribute('aria-label'),
+}));
+check('ライブ入力を止めると元の曲に戻る', after.name.startsWith('デモ曲') && after.button === '再生', after.name);
 check('コンソールエラーなし', consoleErrors.length === 0, consoleErrors.join(' | '));
 console.log(`\nscreenshots: ${dir}`);
 
 await browser.close();
+server.close();
 console.log(failures ? `\n${failures} check(s) failed` : '\nall checks passed');
 process.exit(failures ? 1 : 0);
