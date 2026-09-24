@@ -409,6 +409,25 @@
   .live-options { display: flex; flex-wrap: wrap; gap: 8px; }
   .live-msg { font-size: 13px; color: var(--warn); }
   .live-msg:empty { display: none; }
+  .devices { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
+  .field { display: grid; gap: 4px; font-size: 12px; color: var(--muted); min-width: 0; }
+  .field select {
+    font: inherit;
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 10px;
+    width: 100%;
+    min-width: 0;
+  }
+  .howto { border-top: 1px solid var(--line); padding-top: 10px; }
+  .howto summary { cursor: pointer; font-weight: 700; font-size: 14px; }
+  .howto-body { display: grid; gap: 4px; padding-top: 4px; }
+  .howto h3 { margin: 10px 0 2px; font-size: 13px; }
+  .howto ol { margin: 0; padding-left: 1.3em; display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+  .howto a { color: var(--accent); }
   .is-live-mode .seek input { visibility: hidden; }
 
   @media (min-width: 640px) {
@@ -446,13 +465,49 @@
     </div>
 
     <div class="live-panel" id="livePanel" hidden>
-      <p>入ってくる音をその場でリファインします。処理そのものの遅れは 0 ms です。スピーカーだとハウリングするので、必ずヘッドホンで聴いてください。</p>
+      <p>入ってくる音をその場でリファインします。処理そのものの遅れは 0 ms です。ハウリングを防ぐため、ヘッドホンで聴いてください。</p>
       <div class="live-options">
-        <button class="btn" type="button" id="liveMic">マイク・外部入力</button>
-        <button class="btn" type="button" id="liveTab">タブや画面の音（パソコンの Chrome）</button>
+        <button class="btn" type="button" id="liveGame">ゲーム・パソコンの音</button>
+        <button class="btn" type="button" id="liveMic">マイク・入力機器</button>
+        <button class="btn" type="button" id="liveTab">ブラウザのタブの音</button>
       </div>
-      <p>タブの音を選ぶと、YouTube や Spotify Web Player などブラウザで流している曲をそのまま処理できます。共有画面で「タブの音声を共有」をオンにしてください。</p>
+      <div class="devices" id="devices" hidden>
+        <label class="field" for="inputSelect"><span>入力</span><select id="inputSelect"></select></label>
+        <label class="field" id="outputField" for="outputSelect"><span>出力（ヘッドホンを選ぶ）</span><select id="outputSelect"></select></label>
+      </div>
       <div class="live-msg" id="liveMsg" role="status" aria-live="polite"></div>
+      <details class="howto" id="gameHowto">
+        <summary>ゲームの音を取り込む準備</summary>
+        <div class="howto-body">
+          <h3>Windows のゲーム</h3>
+          <ol>
+            <li>無料の仮想オーディオ「VB-CABLE」を入れる（<a href="https://vb-audio.com/Cable/" target="_blank" rel="noopener">vb-audio.com</a>）</li>
+            <li>設定 → システム → サウンド → 音量ミキサーで、ゲームの出力デバイスを「CABLE Input」にする</li>
+            <li>Chrome か Edge でこのページを開き「ゲーム・パソコンの音」を押す。出力はヘッドホンを選ぶ</li>
+          </ol>
+          <h3>Mac のゲーム</h3>
+          <ol>
+            <li>無料の仮想オーディオ「BlackHole 2ch」を入れる（<a href="https://existential.audio/blackhole/" target="_blank" rel="noopener">existential.audio</a>）</li>
+            <li>システム設定 → サウンド → 出力を「BlackHole 2ch」にする</li>
+            <li>Chrome でこのページを開き「ゲーム・パソコンの音」を押す。出力はヘッドホンを選ぶ</li>
+          </ol>
+          <h3>Switch・PS5・Xbox などのゲーム機</h3>
+          <ol>
+            <li>キャプチャーボードか、オーディオインターフェースのライン入力でパソコンに音を入れる</li>
+            <li>「マイク・入力機器」を押し、入力にその機器を選ぶ</li>
+          </ol>
+          <h3>iPhone・Android のゲーム</h3>
+          <ol>
+            <li>スマホの中では、ほかのアプリの音を加工できません</li>
+            <li>イヤホン端子（変換アダプタ）からケーブルでパソコンの入力につなげば、パソコン側で処理できます</li>
+          </ol>
+          <h3>ブラウザで流している音</h3>
+          <ol>
+            <li>パソコンの Chrome / Edge で「ブラウザのタブの音」を押し、共有画面で「タブの音声を共有」をオンにする</li>
+          </ol>
+          <p>音ゲーなどタイミングが大事なゲームでは、入出力の遅れ（画面の「遅延」の値）が気になることがあります。</p>
+        </div>
+      </details>
     </div>
 
     <div class="screen">
@@ -530,7 +585,7 @@
       <li><strong>高域補完</strong>は、残っている5kHz以上の成分から倍音を作り、MP3やAACで削られた16kHz以上を埋め直す処理です。失われた音を推定して作り直すもので、元の録音を完全に復元するものではありません。</li>
       <li><strong>空間</strong>はヘッドホン・イヤホン向けです。スピーカーで聴いているような左右の回り込みと部屋の響きを加えます。iPhoneの空間オーディオのような、頭の向きに合わせた追従はしません。</li>
       <li>Apple MusicやSpotifyで再生中の音には直接かけられません。iPhoneは他のアプリの音を加工する仕組みを公開していないためです。著作権保護（DRM）付きの曲も読み込めません。</li>
-      <li><strong>ライブ入力</strong>は、マイク・外部入力（iPhoneでも可）と、パソコンの Chrome / Edge でのタブや画面の音に対応します。処理による遅れは 0 ms で、残りは端末の入出力の遅れです。Bluetooth イヤホンはそれ自体に 0.1〜0.2 秒ほどの遅れがあるので、遅延を最小にしたいときは有線をおすすめします。</li>
+      <li><strong>ライブ入力</strong>は、マイク・入力機器（iPhoneでも可）、パソコンのゲームの音（仮想オーディオ経由）、ゲーム機の音（キャプチャーボード経由）、パソコンの Chrome / Edge で流しているタブの音に対応します。処理による遅れは 0 ms で、残りは端末の入出力の遅れです。Bluetooth イヤホンはそれ自体に 0.1〜0.2 秒ほどの遅れがあるので、遅延を最小にしたいときは有線をおすすめします。</li>
       <li>ライブ入力は、マイクを使える通常の Web ページとして開いたときに動きます。Claude のプレビュー画面の中ではマイクや画面共有が使えません。</li>
       <li>最後にリミッターを通すので、設定を強めても音割れしません。</li>
     </ul>
@@ -1340,6 +1395,8 @@ registerProcessor('refiner-dynamics', RefinerDynamics);
     mode: 'wet',
     match: saved.match !== false,
     loop: saved.loop !== false,
+    inputId: saved.inputId || '',
+    outputId: saved.outputId || '',
     buffer: null,
     name: '',
     playing: false,
@@ -1350,7 +1407,10 @@ registerProcessor('refiner-dynamics', RefinerDynamics);
   };
   const persist = () => {
     try {
-      localStorage.setItem(STORE_KEY, JSON.stringify({ settings: state.settings, preset: state.preset, match: state.match, loop: state.loop }));
+      localStorage.setItem(STORE_KEY, JSON.stringify({
+        settings: state.settings, preset: state.preset, match: state.match, loop: state.loop,
+        inputId: state.inputId, outputId: state.outputId,
+      }));
     } catch { /* storage unavailable: settings just won't be remembered */ }
   };
 
@@ -1621,92 +1681,246 @@ registerProcessor('refiner-dynamics', RefinerDynamics);
   const liveBtn = $('liveBtn');
   const livePanel = $('livePanel');
   const liveMsg = $('liveMsg');
-  if (!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)) $('liveTab').hidden = true;
+  const inputSelect = $('inputSelect');
+  const outputSelect = $('outputSelect');
+  const howto = $('gameHowto');
+  const hasMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  const canPickOutput = typeof ac.setSinkId === 'function';
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+    (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
+  if (isMobile || !(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)) $('liveTab').hidden = true;
+  $('outputField').hidden = !canPickOutput;
+
+  // Virtual audio devices that a game's sound can be routed into.
+  const VIRTUAL_RE = /CABLE|VB-Audio|VoiceMeeter|BlackHole|Loopback Audio|Soundflower|Background Music|Virtual/i;
+  const isVirtual = (label) => VIRTUAL_RE.test(label || '');
+  // Listening to a virtual cable while our own output also goes into a virtual
+  // cable would feed the sound back into itself. Without an output picker we
+  // cannot rule that out, so treat it as a risk too.
+  const loopRisk = (inLabel, outLabel, canPick) => isVirtual(inLabel) && (!canPick || isVirtual(outLabel));
+
+  let devices = { inputs: [], outputs: [] };
+  let sinkId = '';
+
+  async function refreshDevices() {
+    if (!hasMedia || !navigator.mediaDevices.enumerateDevices) return;
+    const all = await navigator.mediaDevices.enumerateDevices();
+    devices = {
+      inputs: all.filter((d) => d.kind === 'audioinput' && d.deviceId !== 'communications'),
+      outputs: all.filter((d) => d.kind === 'audiooutput' && d.deviceId !== 'communications'),
+    };
+    const current = state.live && state.live.kind === 'device' ? state.live.deviceId : state.inputId;
+    inputSelect.replaceChildren(...devices.inputs.map((d, i) => {
+      const name = d.label || `入力 ${i + 1}`;
+      return new Option(isVirtual(d.label) ? `${name}（ゲーム音向け）` : name, d.deviceId, false, d.deviceId === current);
+    }));
+    const def = devices.outputs.find((d) => d.deviceId === 'default');
+    const defName = def && def.label ? def.label.replace(/^(Default|既定)\s*-\s*/i, '') : '';
+    const outs = [new Option(defName ? `既定の出力（${defName}）` : '既定の出力', '')];
+    devices.outputs.forEach((d, i) => {
+      if (d.deviceId !== 'default') outs.push(new Option(d.label || `出力 ${i + 1}`, d.deviceId));
+    });
+    outputSelect.replaceChildren(...outs);
+    outputSelect.value = outs.some((o) => o.value === sinkId) ? sinkId : '';
+    // Device names are only revealed after the microphone permission is granted.
+    $('devices').hidden = !devices.inputs.some((d) => d.label);
+  }
+  if (hasMedia && navigator.mediaDevices.addEventListener) {
+    navigator.mediaDevices.addEventListener('devicechange', () => { refreshDevices().then(checkLoop, () => {}); });
+  }
+
+  function outputLabel() {
+    const d = devices.outputs.find((x) => x.deviceId === (sinkId || 'default'));
+    return d ? d.label : '';
+  }
+
+  function checkLoop() {
+    const risk = !!state.live && state.live.kind === 'device' && loopRisk(state.live.label, outputLabel(), canPickOutput);
+    state.loopMuted = risk;
+    master.gain.setTargetAtTime(risk ? 0 : 1, ac.currentTime, 0.01);
+    if (risk) {
+      liveMsg.dataset.kind = 'loop';
+      liveMsg.textContent = canPickOutput
+        ? `出力先が「${outputLabel()}」のままだと音がループするので消音しています。出力をヘッドホンに変えてください。`
+        : 'このブラウザでは出力先を選べず音がループするおそれがあるので、消音しています。Chrome か Edge で開いてください。';
+    } else if (liveMsg.dataset.kind === 'loop') {
+      liveMsg.dataset.kind = '';
+      liveMsg.textContent = '';
+    }
+  }
+
+  async function setOutput(id, quiet = false) {
+    try {
+      await ac.setSinkId(id);
+      sinkId = id;
+    } catch {
+      if (!quiet) liveMsg.textContent = 'この出力には切り替えられませんでした。';
+    }
+    outputSelect.value = sinkId;
+    state.outputId = sinkId;
+    persist();
+    checkLoop();
+  }
+  outputSelect.addEventListener('change', () => setOutput(outputSelect.value));
+
+  inputSelect.addEventListener('change', () => {
+    state.inputId = inputSelect.value;
+    persist();
+    if (state.live && state.live.kind === 'device') startLive('device', state.inputId);
+  });
 
   liveBtn.addEventListener('click', () => {
-    if (state.live) {
-      stopLive();
-      return;
-    }
     const open = livePanel.hidden;
     livePanel.hidden = !open;
     liveBtn.setAttribute('aria-expanded', String(open));
   });
-  $('liveMic').addEventListener('click', () => startLive('mic'));
+  $('liveMic').addEventListener('click', () => startLive('device', state.inputId));
   $('liveTab').addEventListener('click', () => startLive('tab'));
+  $('liveGame').addEventListener('click', startGame);
 
   function liveError(err, kind) {
     const name = err && err.name;
-    if (!navigator.mediaDevices) return 'この開き方では入力を使えません。https のページとして開いてください。';
+    if (!hasMedia) return 'この開き方では入力を使えません。https のページとして開いてください。';
     if (name === 'NotAllowedError' || name === 'SecurityError') {
       if (inArtifact) return 'Claude のプレビュー画面の中ではマイクや画面共有を使えません。index.html を通常の Web ページとして開いてください。';
-      return kind === 'mic'
-        ? 'マイクの使用が許可されませんでした。ブラウザの設定でこのページのマイクを許可してください。'
-        : '画面共有がキャンセルされました。';
+      return kind === 'tab'
+        ? '画面共有がキャンセルされました。'
+        : 'マイクの使用が許可されませんでした。ブラウザの設定でこのページのマイクを許可してください。';
     }
-    if (name === 'NotFoundError' || name === 'OverconstrainedError') return '使える入力が見つかりませんでした。マイクや入力機器の接続を確認してください。';
-    if (err && err.message === 'no-audio') return '音声が共有されませんでした。共有するときに「タブの音声も共有する」をオンにしてください。';
+    if (name === 'NotFoundError' || name === 'OverconstrainedError') return '使える入力が見つかりませんでした。機器の接続を確認してください。';
+    if (err && err.message === 'no-audio') return '音声が共有されませんでした。共有するときに「タブの音声を共有」をオンにしてください。';
     return '入力を開始できませんでした：' + (err && err.message ? err.message : String(err));
   }
 
-  async function startLive(kind) {
+  // Finds the virtual cable the game plays into and listens to it.
+  async function startGame() {
     liveMsg.textContent = '';
-    if (!fx) return;
-    let stream = null;
-    try {
-      if (!navigator.mediaDevices) throw new Error('insecure');
-      // Raw signal: voice-call processing would smear music.
-      const raw = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
-      if (kind === 'mic') {
-        try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch { /* not supported */ }
-        stream = await navigator.mediaDevices.getUserMedia({ audio: { ...raw, channelCount: { ideal: 2 }, latency: { ideal: 0 } } });
-      } else {
-        stream = await navigator.mediaDevices.getDisplayMedia({
-          video: true,
-          audio: { ...raw, suppressLocalAudioPlayback: true },
-          systemAudio: 'include',
-          selfBrowserSurface: 'exclude',
-        });
-        stream.getVideoTracks().forEach((t) => t.stop());
-        if (!stream.getAudioTracks().length) throw new Error('no-audio');
+    if (isMobile) {
+      howto.open = true;
+      liveMsg.textContent = 'スマホの中では、ほかのアプリ（ゲーム）の音を取り込めません。下の「iPhone・Android のゲーム」を見てください。';
+      return;
+    }
+    if (!hasMedia) {
+      liveMsg.textContent = liveError(null, 'device');
+      return;
+    }
+    if (!devices.inputs.some((d) => d.label)) {
+      try {
+        const probe = await navigator.mediaDevices.getUserMedia({ audio: true });
+        probe.getTracks().forEach((t) => t.stop());
+      } catch (err) {
+        liveMsg.textContent = liveError(err, 'device');
+        return;
       }
+    }
+    await refreshDevices();
+    const cables = devices.inputs.filter((d) => isVirtual(d.label));
+    const cable = cables.find((d) => d.deviceId !== 'default') || cables[0];
+    if (!cable) {
+      howto.open = true;
+      liveMsg.textContent = '仮想オーディオ（VB-CABLE や BlackHole）が見つかりませんでした。下の手順で準備してから、もう一度押してください。';
+      return;
+    }
+    state.inputId = cable.deviceId;
+    persist();
+    startLive('device', cable.deviceId);
+  }
+
+  function releaseCapture() {
+    if (!state.live) return;
+    state.live.node.disconnect();
+    state.live.stream.getTracks().forEach((t) => t.stop());
+  }
+
+  async function openCapture(kind, deviceId) {
+    // Raw signal: voice-call processing would smear music and game audio.
+    const raw = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+    if (kind === 'tab') {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: { ...raw, suppressLocalAudioPlayback: true },
+        systemAudio: 'include',
+        selfBrowserSurface: 'exclude',
+      });
+      stream.getVideoTracks().forEach((t) => t.stop());
+      if (!stream.getAudioTracks().length) {
+        stream.getTracks().forEach((t) => t.stop());
+        throw new Error('no-audio');
+      }
+      return stream;
+    }
+    try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch { /* not supported */ }
+    const audio = { ...raw, channelCount: { ideal: 2 }, latency: { ideal: 0 } };
+    try {
+      return await navigator.mediaDevices.getUserMedia({ audio: deviceId ? { ...audio, deviceId: { exact: deviceId } } : audio });
     } catch (err) {
-      if (stream) stream.getTracks().forEach((t) => t.stop());
-      try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* not supported */ }
+      // A remembered device may have been unplugged: fall back to the default input.
+      if (deviceId && (err.name === 'OverconstrainedError' || err.name === 'NotFoundError')) {
+        return navigator.mediaDevices.getUserMedia({ audio });
+      }
+      throw err;
+    }
+  }
+
+  async function startLive(kind, deviceId) {
+    liveMsg.textContent = '';
+    liveMsg.dataset.kind = '';
+    if (!fx) return;
+    let stream;
+    try {
+      if (!hasMedia) throw new Error('insecure');
+      stream = await openCapture(kind, deviceId);
+    } catch (err) {
+      if (!state.live) {
+        try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* not supported */ }
+      }
       liveMsg.textContent = liveError(err, kind);
       return;
     }
+    releaseCapture();
     if (state.playing) pause();
     await ac.resume();
+    if (kind === 'device') await refreshDevices();
     const track = stream.getAudioTracks()[0];
+    const ts = track.getSettings ? track.getSettings() : {};
+    const id = ts.deviceId || deviceId || '';
+    const dev = devices.inputs.find((d) => d.deviceId === id) || devices.inputs.find((d) => d.deviceId === deviceId);
     const node = ac.createMediaStreamSource(stream);
     node.connect(bus);
-    const ts = track.getSettings ? track.getSettings() : {};
-    state.live = { kind, stream, node, inputLatency: typeof ts.latency === 'number' ? ts.latency : 0 };
-    track.addEventListener('ended', stopLive);
+    state.live = {
+      kind,
+      stream,
+      node,
+      deviceId: dev ? dev.deviceId : id,
+      label: (dev && dev.label) || track.label || '',
+      channels: ts.channelCount || 0,
+      inputLatency: typeof ts.latency === 'number' ? ts.latency : 0,
+    };
+    if (kind === 'device') inputSelect.value = state.live.deviceId;
+    track.addEventListener('ended', () => { if (state.live && state.live.stream === stream) stopLive(); });
     loud.dry = loud.wet = 0;
     app.classList.add('is-live-mode');
-    livePanel.hidden = true;
-    liveBtn.setAttribute('aria-expanded', 'false');
     liveBtn.classList.add('is-live');
-    $('liveBtnText').textContent = 'ライブ入力を止める';
-    $('sourceName').textContent = kind === 'mic' ? 'ライブ入力：マイク・外部入力' : 'ライブ入力：タブ・画面の音';
+    $('liveBtnText').textContent = 'ライブ入力中';
+    $('sourceName').textContent = kind === 'tab'
+      ? 'ライブ入力：ブラウザのタブの音'
+      : isVirtual(state.live.label) ? 'ライブ入力：ゲーム・パソコンの音' : 'ライブ入力：マイク・入力機器';
     $('timeNow').textContent = 'LIVE';
     $('timeTotal').textContent = '';
     seek.disabled = true;
     $('exportBtn').disabled = true;
     setPlayIcon('stop');
     $('screenMsg').hidden = true;
+    checkLoop();
     updateLatency();
     kickLoop();
   }
 
   function stopLive() {
     if (!state.live) return;
-    const { stream, node } = state.live;
+    releaseCapture();
     state.live = null;
-    node.disconnect();
-    stream.getTracks().forEach((t) => t.stop());
+    checkLoop();
     try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* not supported */ }
     app.classList.remove('is-live-mode');
     liveBtn.classList.remove('is-live');
@@ -1730,7 +1944,11 @@ registerProcessor('refiner-dynamics', RefinerDynamics);
     const ms = (v) => Math.round(v * 1000);
     $('rLatency').textContent = `約 ${ms(proc + io)} ms`;
     if (state.live) {
-      $('sourceMeta').textContent = `リアルタイム処理中 · 処理の遅れ ${ms(proc)} ms · 入出力を含め約 ${ms(proc + io)} ms`;
+      const parts = [];
+      if (state.live.label) parts.push(state.live.label);
+      if (state.live.channels === 1) parts.push('モノラル');
+      parts.push(`処理の遅れ ${ms(proc)} ms`, `入出力を含め約 ${ms(proc + io)} ms`);
+      $('sourceMeta').textContent = parts.join(' · ');
     }
   }
 
@@ -2025,7 +2243,17 @@ registerProcessor('refiner-dynamics', RefinerDynamics);
     fx.output.connect(matchTrim);
     liveMeterWet = makeMeter(ac, fx.output);
     window.__refiner.engine = fx.engine;
+    window.__refiner.isVirtual = isVirtual;
+    window.__refiner.loopRisk = loopRisk;
+    window.__refiner.liveState = () => ({
+      live: !!state.live,
+      label: state.live ? state.live.label : '',
+      deviceId: state.live ? state.live.deviceId : '',
+      loopMuted: !!state.loopMuted,
+    });
     updateLatency();
+    if (canPickOutput && state.outputId) setOutput(state.outputId, true);
+    refreshDevices().catch(() => {});
     try {
       const buf = await makeDemo(ac.sampleRate);
       if (!state.buffer) setSource(buf, 'デモ曲（合成音）', 'MP3 128kbps 相当に劣化させた状態 · 16kHz以上なし · ' + fmt(buf.duration));

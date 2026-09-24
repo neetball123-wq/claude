@@ -309,11 +309,13 @@ const live = await page.evaluate(() => ({
   button: document.getElementById('playBtn').getAttribute('aria-label'),
   latency: document.getElementById('rLatency').textContent,
   msg: document.getElementById('liveMsg').textContent,
-  panelShown: document.getElementById('livePanel').offsetParent !== null,
   overlayShown: document.getElementById('screenMsg').offsetParent !== null,
+  devicesShown: document.getElementById('devices').offsetParent !== null,
+  inputs: document.getElementById('inputSelect').options.length,
 }));
-check('ライブ開始後はパネルと「解析中」表示が消える', !live.panelShown && !live.overlayShown, `panel ${live.panelShown}, overlay ${live.overlayShown}`);
-check('ライブ入力（マイク）が始まる', live.name === 'ライブ入力：マイク・外部入力' && live.button === 'ライブ入力を止める', live.msg || live.name);
+check('ライブ開始後は「解析中」表示が消える', !live.overlayShown);
+check('許可後に入力機器の一覧が出る', live.devicesShown && live.inputs >= 1, `${live.inputs} inputs`);
+check('ライブ入力（マイク）が始まる', live.name === 'ライブ入力：マイク・入力機器' && live.button === 'ライブ入力を止める', live.msg || live.name);
 check('ライブ中は処理遅延 0 ms と表示', live.meta.includes('処理の遅れ 0 ms'), live.meta);
 check('遅延の推定値が出る', /^約 \d+ ms$/.test(live.latency), live.latency);
 await page.click('#abDry');
@@ -326,6 +328,89 @@ const after = await page.evaluate(() => ({
   button: document.getElementById('playBtn').getAttribute('aria-label'),
 }));
 check('ライブ入力を止めると元の曲に戻る', after.name.startsWith('デモ曲') && after.button === '再生', after.name);
+
+// No virtual cable on this machine: the game button should explain the setup.
+await page.click('#liveGame');
+await page.waitForFunction(() => document.getElementById('liveMsg').textContent !== '', null, { timeout: 5000 });
+const noCable = await page.evaluate(() => ({
+  msg: document.getElementById('liveMsg').textContent,
+  howto: document.getElementById('gameHowto').open,
+  live: window.__refiner.liveState().live,
+}));
+check('仮想ケーブルが無いときは準備手順を案内する', noCable.msg.includes('見つかりませんでした') && noCable.howto && !noCable.live, noCable.msg);
+
+const labels = await page.evaluate(() => {
+  const { isVirtual, loopRisk } = window.__refiner;
+  return {
+    virtual: ['CABLE Output (VB-Audio Virtual Cable)', 'BlackHole 2ch', 'VoiceMeeter Output (VB-Audio VoiceMeeter VAIO)', '既定 - CABLE Output (VB-Audio Virtual Cable)'].map(isVirtual),
+    real: ['マイク (Realtek(R) Audio)', 'MacBook Pro Microphone', 'Elgato HD60 X', 'USB Audio CODEC'].map(isVirtual),
+    risk: [
+      loopRisk('CABLE Output (VB-Audio Virtual Cable)', '既定 - CABLE Input (VB-Audio Virtual Cable)', true),
+      loopRisk('BlackHole 2ch', 'BlackHole 2ch', true),
+      loopRisk('CABLE Output (VB-Audio Virtual Cable)', 'ヘッドホン (Realtek(R) Audio)', true),
+      loopRisk('マイク (Realtek(R) Audio)', '既定 - CABLE Input (VB-Audio Virtual Cable)', true),
+      loopRisk('BlackHole 2ch', '', false),
+    ],
+  };
+});
+check('仮想オーディオの名前を見分ける', labels.virtual.every(Boolean) && !labels.real.some(Boolean), JSON.stringify(labels));
+check('音ループの危険を判定する', JSON.stringify(labels.risk) === JSON.stringify([true, true, false, false, true]), JSON.stringify(labels.risk));
+
+// A PC with VB-CABLE where the default output is also the cable (the loop case).
+const ctx2 = await browser.newContext({ viewport: { width: 1100, height: 900 } });
+await ctx2.route(FONT_HOSTS, (route) => route.abort());
+await ctx2.addInitScript(() => {
+  const md = navigator.mediaDevices;
+  const gum = md.getUserMedia.bind(md);
+  // Every request is served by Chromium's fake input, but reports the device
+  // that was asked for, as a real browser does.
+  md.getUserMedia = async (c) => {
+    const wanted = c && c.audio && c.audio.deviceId && c.audio.deviceId.exact;
+    const stream = await gum(wanted ? { audio: { ...c.audio, deviceId: undefined } } : c);
+    if (wanted) {
+      for (const t of stream.getAudioTracks()) {
+        const orig = t.getSettings.bind(t);
+        t.getSettings = () => ({ ...orig(), deviceId: wanted });
+      }
+    }
+    return stream;
+  };
+  md.enumerateDevices = async () => [
+    { kind: 'audioinput', deviceId: 'default', label: '既定 - マイク (Realtek(R) Audio)', groupId: 'a' },
+    { kind: 'audioinput', deviceId: 'mic', label: 'マイク (Realtek(R) Audio)', groupId: 'a' },
+    { kind: 'audioinput', deviceId: 'cable', label: 'CABLE Output (VB-Audio Virtual Cable)', groupId: 'b' },
+    { kind: 'audiooutput', deviceId: 'default', label: '既定 - CABLE Input (VB-Audio Virtual Cable)', groupId: 'b' },
+    { kind: 'audiooutput', deviceId: 'hp', label: 'ヘッドホン (Realtek(R) Audio)', groupId: 'a' },
+  ];
+  AudioContext.prototype.setSinkId = async function () {};
+});
+const page2 = await ctx2.newPage();
+const errors2 = [];
+page2.on('pageerror', (e) => errors2.push(String(e)));
+await page2.goto(pageUrl);
+await page2.waitForFunction(() => window.__refiner && window.__refiner.engine);
+await page2.click('#liveBtn');
+await page2.click('#liveGame');
+await page2.waitForFunction(() => window.__refiner.liveState().live, null, { timeout: 5000 });
+const g1 = await page2.evaluate(() => ({
+  st: window.__refiner.liveState(),
+  name: document.getElementById('sourceName').textContent,
+  input: document.getElementById('inputSelect').value,
+  msg: document.getElementById('liveMsg').textContent,
+}));
+check('ゲームボタンで仮想ケーブルを自動で選ぶ', g1.st.deviceId === 'cable' && g1.input === 'cable' && g1.name === 'ライブ入力：ゲーム・パソコンの音', `${g1.st.deviceId} / ${g1.name}`);
+check('出力も仮想ケーブルならループ防止で消音する', g1.st.loopMuted && g1.msg.includes('ループ'), g1.msg);
+await page2.selectOption('#outputSelect', 'hp');
+await page2.waitForFunction(() => !window.__refiner.liveState().loopMuted, null, { timeout: 3000 }).catch(() => {});
+const g2 = await page2.evaluate(() => ({ st: window.__refiner.liveState(), msg: document.getElementById('liveMsg').textContent }));
+check('出力をヘッドホンにすると消音が解ける', !g2.st.loopMuted && g2.msg === '', g2.msg);
+await page2.selectOption('#inputSelect', 'mic');
+await page2.waitForFunction(() => document.getElementById('sourceName').textContent === 'ライブ入力：マイク・入力機器', null, { timeout: 5000 }).catch(() => {});
+const g3 = await page2.evaluate(() => ({ st: window.__refiner.liveState(), name: document.getElementById('sourceName').textContent }));
+check('入力を切り替えるとライブのまま入れ替わる', g3.st.live && g3.st.deviceId === 'mic' && g3.name === 'ライブ入力：マイク・入力機器', `${g3.st.deviceId} / ${g3.name}`);
+await page2.screenshot({ path: join(dir, 'game.png') });
+check('ゲーム入力のシナリオでエラーなし', errors2.length === 0, errors2.join(' | '));
+await ctx2.close();
 check('コンソールエラーなし', consoleErrors.length === 0, consoleErrors.join(' | '));
 console.log(`\nscreenshots: ${dir}`);
 
