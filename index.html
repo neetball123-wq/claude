@@ -1,0 +1,1748 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>音質リファイナー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@900&display=swap">
+<style>
+  :root {
+    --bg: #E7EAEE;
+    --panel: #F6F7F9;
+    --raised: #FFFFFF;
+    --ink: #13161B;
+    --muted: #59616D;
+    --line: #CDD3DB;
+    --track: #D6DBE2;
+    --accent: #3544D0;
+    --accent-ink: #FFFFFF;
+    --accent-soft: #E1E4FA;
+    --on: #0E9A5E;
+    --warn: #B45309;
+    --screen: #0C0F14;
+    --screen-grid: #1B222B;
+    --screen-label: #7B8695;
+    --trace-dry: #9AA4B2;
+    --trace-wet: #7F8CFF;
+    --trace-wet-2: #3FCFBD;
+    --band: #F0B429;
+    --shadow: 0 1px 2px rgba(19, 22, 27, .06), 0 10px 30px rgba(19, 22, 27, .07);
+    --font-body: "IBM Plex Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
+    --font-display: "Zen Kaku Gothic New", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0D1014;
+      --panel: #151920;
+      --raised: #1C2129;
+      --ink: #E7EBF0;
+      --muted: #97A1AE;
+      --line: #2A313B;
+      --track: #313946;
+      --accent: #8C98FF;
+      --accent-ink: #0D1014;
+      --accent-soft: #232843;
+      --on: #3DDC97;
+      --warn: #F59E0B;
+      --screen: #07090C;
+      --screen-grid: #161C24;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px rgba(0, 0, 0, .35);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0D1014;
+    --panel: #151920;
+    --raised: #1C2129;
+    --ink: #E7EBF0;
+    --muted: #97A1AE;
+    --line: #2A313B;
+    --track: #313946;
+    --accent: #8C98FF;
+    --accent-ink: #0D1014;
+    --accent-soft: #232843;
+    --on: #3DDC97;
+    --warn: #F59E0B;
+    --screen: #07090C;
+    --screen-grid: #161C24;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px rgba(0, 0, 0, .35);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    padding-inline: 16px;
+    padding-block: 28px 56px;
+    display: grid;
+    gap: 20px;
+  }
+  button, input, label { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- header ---------- */
+  .top { display: grid; gap: 6px; }
+  .brand {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: clamp(30px, 8.5vw, 46px);
+    line-height: 1.1;
+    letter-spacing: .01em;
+    word-break: keep-all;
+  }
+  .brand small {
+    display: block;
+    margin-bottom: 6px;
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 12px;
+    letter-spacing: .16em;
+    color: var(--muted);
+  }
+  .lede { margin: 0; color: var(--muted); max-width: 40em; }
+
+  /* ---------- the unit ---------- */
+  .unit {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    padding: 16px;
+    display: grid;
+    gap: 14px;
+  }
+  .source {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .source-text { flex: 1 1 220px; min-width: 0; }
+  .eyebrow {
+    display: block;
+    font-size: 11px;
+    letter-spacing: .12em;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .source-name {
+    display: block;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+  .source-meta { display: block; font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
+  .btn {
+    border: 1px solid var(--line);
+    background: var(--raised);
+    border-radius: 999px;
+    padding: 9px 16px;
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 1.2;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn[disabled] { opacity: .5; cursor: default; }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .visually-hidden {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip: rect(0 0 0 0); border: 0;
+  }
+
+  .screen {
+    position: relative;
+    background: var(--screen);
+    border-radius: 12px;
+    overflow: hidden;
+    height: 210px;
+  }
+  .screen canvas { display: block; width: 100%; height: 100%; }
+  .legend {
+    position: absolute;
+    top: 8px;
+    left: 44px;
+    display: flex;
+    gap: 14px;
+    font-size: 11px;
+    color: #C9D1DC;
+    pointer-events: none;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+  .swatch-dry { background: var(--trace-dry); }
+  .swatch-wet { background: linear-gradient(90deg, var(--trace-wet), var(--trace-wet-2)); height: 8px; }
+  .screen-msg {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: #C9D1DC;
+    font-size: 13px;
+  }
+
+  .transport { display: flex; align-items: center; gap: 12px; }
+  .play {
+    width: 52px; height: 52px; flex: 0 0 52px;
+    border-radius: 50%;
+    border: 0;
+    background: var(--ink);
+    color: var(--bg);
+    display: grid; place-items: center;
+  }
+  .play svg { width: 20px; height: 20px; fill: currentColor; }
+  .seek { flex: 1; display: grid; gap: 2px; min-width: 0; }
+  .time { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .ab {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 4px;
+    gap: 4px;
+  }
+  .ab button {
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    min-height: 56px;
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--muted);
+  }
+  .ab button[aria-pressed="true"] { background: var(--raised); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+  .ab button.wet[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+  .led { width: 9px; height: 9px; border-radius: 50%; background: var(--track); flex: 0 0 9px; }
+  .ab button[aria-pressed="true"] .led { background: var(--on); box-shadow: 0 0 8px var(--on); }
+  .ab-hint { margin: -6px 0 0; font-size: 12px; color: var(--muted); text-align: center; }
+
+  .readouts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .readout {
+    background: var(--raised);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 8px 10px;
+    min-width: 0;
+  }
+  .readout dt { font-size: 11px; color: var(--muted); letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .readout dd {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ---------- controls ---------- */
+  .section-title { margin: 0; font-size: 13px; letter-spacing: .1em; color: var(--muted); font-weight: 500; }
+  .controls { display: grid; gap: 14px; }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    border: 1px solid var(--line);
+    background: var(--raised);
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+  .knobs { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+  .knob {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px 10px;
+    display: grid;
+    gap: 2px;
+  }
+  .knob-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .knob-head label { font-weight: 700; }
+  .knob-head output { font-family: var(--font-mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .knob-note { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 30px;
+    margin: 0;
+    background: transparent;
+    --pct: 50%;
+  }
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(to right, var(--accent) var(--pct), var(--track) var(--pct));
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 24px; height: 24px;
+    margin-top: -9px;
+    border-radius: 50%;
+    background: var(--raised);
+    border: 2px solid var(--accent);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+  }
+  input[type="range"]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--track); }
+  input[type="range"]::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--accent); }
+  input[type="range"]::-moz-range-thumb {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--raised); border: 2px solid var(--accent);
+  }
+  input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+  .switches { display: grid; gap: 8px; }
+  .switch {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+  }
+  .switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .switch-track {
+    flex: 0 0 42px;
+    width: 42px; height: 24px;
+    border-radius: 12px;
+    background: var(--track);
+    position: relative;
+    margin-top: 1px;
+    transition: background .15s;
+  }
+  .switch-track::after {
+    content: "";
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--raised);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+    transition: transform .15s;
+  }
+  .switch input:checked + .switch-track { background: var(--on); }
+  .switch input:checked + .switch-track::after { transform: translateX(18px); }
+  .switch input:focus-visible + .switch-track { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .switch-text strong { display: block; font-weight: 700; }
+  .switch-text span { display: block; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+
+  .export {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px;
+  }
+  .export p { margin: 0; flex: 1 1 240px; font-size: 13px; color: var(--muted); }
+  .export .btn { padding: 12px 20px; font-size: 15px; }
+  .status { flex-basis: 100%; font-size: 13px; font-family: var(--font-mono); color: var(--ink); min-height: 1.2em; }
+  .status.is-error { color: var(--warn); }
+
+  .notes { display: grid; gap: 10px; }
+  .flow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    font-size: 12.5px;
+  }
+  .flow span {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 2px 8px;
+    background: var(--raised);
+    white-space: nowrap;
+  }
+  .flow i { font-style: normal; color: var(--muted); }
+  .notes ul { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; color: var(--muted); font-size: 13.5px; max-width: 46em; }
+  .notes li strong { color: var(--ink); font-weight: 500; }
+
+  .dropping .unit { outline: 2px dashed var(--accent); outline-offset: 4px; }
+
+  @media (min-width: 640px) {
+    .unit { padding: 20px; gap: 16px; }
+    .screen { height: 250px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .switch-track, .switch-track::after { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <header class="top">
+    <h1 class="brand"><small>AUDIO REFINER</small>音質リファイナー</h1>
+    <p class="lede">曲を通すだけで、圧縮で削られた高域を補い、奥行きと広がりを足します。再生しながら「原音」と「リファイン」を切り替えて聴き比べてください。</p>
+  </header>
+
+  <section class="unit" aria-label="プレーヤー">
+    <div class="source">
+      <div class="source-text">
+        <span class="eyebrow">再生する音</span>
+        <span class="source-name" id="sourceName">デモ曲を準備しています…</span>
+        <span class="source-meta" id="sourceMeta">&nbsp;</span>
+      </div>
+      <label class="btn" for="fileInput">
+        <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3a1 1 0 0 1 1 1v9.59l3.3-3.3a1 1 0 1 1 1.4 1.42l-5 5a1 1 0 0 1-1.4 0l-5-5a1 1 0 1 1 1.4-1.42l3.3 3.3V4a1 1 0 0 1 1-1Zm-8 15a1 1 0 0 1 1 1v1h14v-1a1 1 0 1 1 2 0v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1Z"/></svg>
+        自分の曲を開く
+      </label>
+      <input class="visually-hidden" type="file" id="fileInput" accept="audio/*,.mp3,.m4a,.aac,.wav,.aif,.aiff,.flac,.caf">
+    </div>
+
+    <div class="screen">
+      <canvas id="spectrum" aria-label="周波数スペクトル。原音とリファイン後を重ねて表示"></canvas>
+      <div class="legend" aria-hidden="true">
+        <span><i class="swatch swatch-dry"></i>原音</span>
+        <span><i class="swatch swatch-wet"></i>リファイン</span>
+      </div>
+      <div class="screen-msg" id="screenMsg">解析中…</div>
+    </div>
+
+    <div class="transport">
+      <button class="play" id="playBtn" type="button" aria-label="再生">
+        <svg id="playIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.52.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 7 4.5Z"/></svg>
+      </button>
+      <div class="seek">
+        <input type="range" id="seek" min="0" max="1000" step="1" value="0" aria-label="再生位置">
+        <div class="time"><span id="timeNow">0:00</span><span id="timeTotal">0:00</span></div>
+      </div>
+    </div>
+
+    <div class="ab" role="group" aria-label="聴き比べ">
+      <button type="button" id="abDry" class="dry" aria-pressed="false"><i class="led"></i>原音</button>
+      <button type="button" id="abWet" class="wet" aria-pressed="true"><i class="led"></i>リファイン</button>
+    </div>
+    <p class="ab-hint">再生中に切り替えると、同じ位置のまま一瞬で聴き比べられます（キーボードは B）</p>
+
+    <dl class="readouts">
+      <div class="readout"><dt>16kHz以上</dt><dd id="rHf">—</dd></div>
+      <div class="readout"><dt>左右の広がり</dt><dd id="rWidth">—</dd></div>
+      <div class="readout"><dt>音量あわせ</dt><dd id="rTrim">—</dd></div>
+    </dl>
+  </section>
+
+  <section class="controls" aria-labelledby="controlsTitle">
+    <h2 class="section-title" id="controlsTitle">プリセット</h2>
+    <div class="presets" id="presets" role="group" aria-label="プリセット"></div>
+    <h2 class="section-title">細かく調整</h2>
+    <div class="knobs" id="knobs"></div>
+    <div class="switches">
+      <label class="switch" for="matchToggle">
+        <input type="checkbox" id="matchToggle" role="switch" checked>
+        <span class="switch-track" aria-hidden="true"></span>
+        <span class="switch-text">
+          <strong>音量をそろえて比べる</strong>
+          <span>音は大きいほど良く聞こえてしまうため、リファイン側の音量を原音に合わせてから比べます。保存するファイルには影響しません。</span>
+        </span>
+      </label>
+      <label class="switch" for="loopToggle">
+        <input type="checkbox" id="loopToggle" role="switch" checked>
+        <span class="switch-track" aria-hidden="true"></span>
+        <span class="switch-text">
+          <strong>くり返し再生</strong>
+          <span>同じ部分を何度も聴き比べたいときに。</span>
+        </span>
+      </label>
+    </div>
+  </section>
+
+  <section class="export" aria-label="保存">
+    <p>リファインした音を曲全体で書き出して保存します（16bit WAV）。長い曲は数十秒かかります。</p>
+    <button class="btn btn-primary" type="button" id="exportBtn">リファインした音を保存</button>
+    <div class="status" id="exportStatus" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="notes" aria-labelledby="notesTitle">
+    <h2 class="section-title" id="notesTitle">処理の流れ</h2>
+    <div class="flow" aria-label="信号の流れ">
+      <span>入力</span><i>→</i><span>高域補完</span><i>→</i><span>明瞭度 EQ</span><i>→</i><span>低域＋倍音</span><i>→</i><span>ステレオ幅</span><i>→</i><span>空間</span><i>→</i><span>迫力</span><i>→</i><span>リミッター</span>
+    </div>
+    <h2 class="section-title">できること・できないこと</h2>
+    <ul>
+      <li><strong>使える音：</strong>端末に保存した MP3・AAC(m4a)・WAV・AIFF など。iPhoneでは「ファイル」アプリから選べます。</li>
+      <li><strong>高域補完</strong>は、残っている5kHz以上の成分から倍音を作り、MP3やAACで削られた16kHz以上を埋め直す処理です。失われた音を推定して作り直すもので、元の録音を完全に復元するものではありません。</li>
+      <li><strong>空間</strong>はヘッドホン・イヤホン向けです。スピーカーで聴いているような左右の回り込みと部屋の響きを加えます。iPhoneの空間オーディオのような、頭の向きに合わせた追従はしません。</li>
+      <li>Apple MusicやSpotifyで再生中の音には直接かけられません。iPhoneは他のアプリの音を加工する仕組みを公開していないためです。著作権保護（DRM）付きの曲も読み込めません。</li>
+      <li>最後にリミッターを通すので、設定を強めても音割れしません。</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+'use strict';
+(() => {
+  // ============================================================
+  //  Small helpers
+  // ============================================================
+  const dbToGain = (db) => Math.pow(10, db / 20);
+  const gainToDb = (g) => 20 * Math.log10(Math.max(g, 1e-12));
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+  function mulberry32(seed) {
+    return () => {
+      seed = (seed + 0x6D2B79F5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  const inputOf = (n) => n.input || n;
+  const outputOf = (n) => n.output || n;
+  function link(...nodes) {
+    for (let i = 0; i < nodes.length - 1; i++) outputOf(nodes[i]).connect(inputOf(nodes[i + 1]));
+    return nodes[nodes.length - 1];
+  }
+
+  function biquad(ctx, type, freq, Q = Math.SQRT1_2, gain = 0) {
+    const f = ctx.createBiquadFilter();
+    f.type = type;
+    f.frequency.value = freq;
+    f.Q.value = Q;
+    f.gain.value = gain;
+    return f;
+  }
+
+  // 4th-order Butterworth made of two biquads.
+  function butter4(ctx, type, freq) {
+    const a = biquad(ctx, type, freq, 0.5412);
+    const b = biquad(ctx, type, freq, 1.3066);
+    a.connect(b);
+    return { input: a, output: b };
+  }
+
+  function gainNode(ctx, value = 1) {
+    const g = ctx.createGain();
+    g.gain.value = value;
+    return g;
+  }
+
+  function forceChannels(node, count) {
+    node.channelCount = count;
+    node.channelCountMode = 'explicit';
+    node.channelInterpretation = 'speakers';
+    return node;
+  }
+
+  function makeCurve(size, fn) {
+    const c = new Float32Array(size);
+    for (let i = 0; i < size; i++) c[i] = fn((i / (size - 1)) * 2 - 1);
+    return c;
+  }
+
+  // Full-wave rectifier: doubles every frequency and scales linearly with level,
+  // so the generated harmonics follow the music's own dynamics.
+  const RECTIFY = makeCurve(4097, (x) => Math.abs(x));
+
+  // Output safety clipper. Input is pre-scaled by 0.5, so the curve covers ±2.0.
+  // Transparent below 0.9, then bends smoothly toward 1.0.
+  const SOFT_CLIP = makeCurve(8193, (x) => {
+    const a = x * 2;
+    const m = Math.abs(a);
+    return m <= 0.9 ? a : Math.sign(a) * (0.9 + 0.1 * Math.tanh((m - 0.9) / 0.1));
+  });
+
+  function shaper(ctx, curve, oversample) {
+    const s = ctx.createWaveShaper();
+    s.curve = curve;
+    s.oversample = oversample;
+    return s;
+  }
+
+  function sinkOf(ctx) {
+    if (!ctx.__sink) {
+      ctx.__sink = gainNode(ctx, 0);
+      ctx.__sink.connect(ctx.destination);
+    }
+    return ctx.__sink;
+  }
+
+  // ============================================================
+  //  Room impulse response (deterministic, generated per sample rate)
+  // ============================================================
+  const irCache = new Map();
+  function roomImpulse(sr) {
+    if (irCache.has(sr)) return irCache.get(sr);
+    const len = Math.floor(sr * 1.3);
+    const rnd = mulberry32(20260924);
+    const chans = [new Float32Array(len), new Float32Array(len)];
+    // Early reflections: [ms, left gain, right gain]
+    const early = [
+      [0.0, 0.85, 0.62], [4.3, 0.52, 0.78], [7.9, 0.66, 0.44], [11.2, 0.40, 0.60],
+      [15.6, 0.47, 0.36], [19.1, 0.32, 0.43], [23.7, 0.31, 0.27], [29.4, 0.22, 0.29],
+      [34.8, 0.21, 0.16], [41.5, 0.15, 0.19],
+    ];
+    for (const [ms, gl, gr] of early) {
+      const i = Math.floor((ms / 1000) * sr);
+      if (i + 1 < len) {
+        chans[0][i] += gl * 0.7; chans[0][i + 1] += gl * 0.3;
+        chans[1][i] += gr * 0.7; chans[1][i + 1] += gr * 0.3;
+      }
+    }
+    // Diffuse tail: decorrelated noise, exponential decay, darker over time.
+    const rt60 = 1.05;
+    const decay = 6.91 / rt60;
+    const start = Math.floor(0.012 * sr);
+    for (let c = 0; c < 2; c++) {
+      let y = 0;
+      for (let i = start; i < len; i++) {
+        const t = i / sr;
+        const fadeIn = Math.min(1, (t - 0.012) / 0.05);
+        const n = (rnd() * 2 - 1) * Math.exp(-decay * t) * fadeIn;
+        const k = 0.6 - 0.48 * (t / 1.3); // one-pole low-pass that closes over time
+        y += k * (n - y);
+        chans[c][i] += y * 0.55;
+      }
+    }
+    let energy = 0;
+    for (const ch of chans) for (let i = 0; i < len; i++) energy += ch[i] * ch[i];
+    const norm = 1 / Math.sqrt(energy / 2);
+    for (const ch of chans) for (let i = 0; i < len; i++) ch[i] *= norm;
+    irCache.set(sr, chans);
+    return chans;
+  }
+
+  // ============================================================
+  //  The enhancer graph (shared by live playback, previews and export)
+  // ============================================================
+  const PARAMS = [
+    { key: 'hf', label: '高域補完', note: '圧縮で消えた16kHz以上を、残っている高域の倍音から作り直します。' },
+    { key: 'clarity', label: '明瞭度', note: 'こもりを抑えて、声と楽器の輪郭を前に出します。' },
+    { key: 'bass', label: '低域', note: '低音に厚みを足し、小さなイヤホンでも聞こえる倍音を加えます。' },
+    { key: 'space', label: '空間', note: 'スピーカーの回り込みと部屋の響きで、頭の外で鳴っているように聞かせます。' },
+    { key: 'width', label: 'ステレオ幅', note: '左右の広がりを強めます。低音は中央に残します。' },
+    { key: 'punch', label: '迫力', note: '小さな音を持ち上げて、全体の密度と音圧を上げます。' },
+  ];
+
+  const PRESETS = [
+    { id: 'recommended', label: 'おすすめ', s: { hf: 0.55, clarity: 0.5, bass: 0.4, space: 0.4, width: 0.45, punch: 0.4 } },
+    { id: 'vocal', label: 'ボーカル', s: { hf: 0.45, clarity: 0.85, bass: 0.2, space: 0.25, width: 0.3, punch: 0.45 } },
+    { id: 'space', label: '3D空間', s: { hf: 0.55, clarity: 0.45, bass: 0.35, space: 0.9, width: 0.8, punch: 0.3 } },
+    { id: 'bass', label: '重低音', s: { hf: 0.45, clarity: 0.35, bass: 0.9, space: 0.3, width: 0.4, punch: 0.6 } },
+    { id: 'natural', label: 'ナチュラル', s: { hf: 0.35, clarity: 0.3, bass: 0.2, space: 0.15, width: 0.2, punch: 0.15 } },
+  ];
+
+  // Delay of the processed path (two compressor look-aheads). The original is
+  // delayed by the same amount so switching A/B lands on the same instant.
+  const LATENCY = 0.012;
+
+  function buildEnhancer(ctx, settings) {
+    const input = forceChannels(gainNode(ctx, dbToGain(-4)), 2);
+
+    // Tone
+    const rumble = biquad(ctx, 'highpass', 22);
+    const lowShelf = biquad(ctx, 'lowshelf', 95);
+    const mud = biquad(ctx, 'peaking', 300, 1.0);
+    const presence = biquad(ctx, 'peaking', 3200, 0.8);
+    const air = biquad(ctx, 'highshelf', 10500);
+    const sumA = gainNode(ctx);
+    link(input, rumble, lowShelf, mud, presence, air, sumA);
+
+    // High-frequency restoration: 5 kHz+ band -> rectifier -> keep 10 kHz+
+    const hfGain = gainNode(ctx, 0);
+    link(input, butter4(ctx, 'highpass', 5000), shaper(ctx, RECTIFY, '4x'), butter4(ctx, 'highpass', 10000), hfGain, sumA);
+
+    // Bass harmonics (audible on earbuds) : <140 Hz -> rectifier -> 80..700 Hz
+    const bassGain = gainNode(ctx, 0);
+    link(input, butter4(ctx, 'lowpass', 140), shaper(ctx, RECTIFY, 'none'), butter4(ctx, 'highpass', 80), biquad(ctx, 'lowpass', 700), bassGain, sumA);
+
+    // Stereo width: add high-passed side signal (L-R)/2 back with +/- sign
+    const sumB = gainNode(ctx);
+    sumA.connect(sumB);
+    const wSplit = ctx.createChannelSplitter(2);
+    const sideL = gainNode(ctx, 0.5);
+    const sideR = gainNode(ctx, -0.5);
+    const side = forceChannels(gainNode(ctx), 1);
+    const sideHp = biquad(ctx, 'highpass', 180);
+    const widenL = gainNode(ctx, 0);
+    const widenR = gainNode(ctx, 0);
+    const wMerge = ctx.createChannelMerger(2);
+    sumA.connect(wSplit);
+    wSplit.connect(sideL, 0);
+    wSplit.connect(sideR, 1);
+    sideL.connect(side);
+    sideR.connect(side);
+    side.connect(sideHp);
+    sideHp.connect(widenL);
+    sideHp.connect(widenR);
+    widenL.connect(wMerge, 0, 0);
+    widenR.connect(wMerge, 0, 1);
+    wMerge.connect(sumB);
+
+    // Space, part 1: speaker crossfeed (each ear hears the other speaker, later and darker)
+    const sumC = gainNode(ctx);
+    const direct = gainNode(ctx, 1);
+    link(sumB, direct, sumC);
+    const xfDelay = ctx.createDelay(0.01);
+    xfDelay.delayTime.value = 0.00027;
+    const xfGain = gainNode(ctx, 0);
+    const xfSplit = ctx.createChannelSplitter(2);
+    const xfMerge = ctx.createChannelMerger(2);
+    link(sumB, xfDelay, biquad(ctx, 'lowpass', 1100, 0.5), xfGain, xfSplit);
+    xfSplit.connect(xfMerge, 0, 1);
+    xfSplit.connect(xfMerge, 1, 0);
+    xfMerge.connect(sumC);
+
+    // Space, part 2: room reflections and tail (mono in, stereo out)
+    const revIn = forceChannels(gainNode(ctx), 1);
+    const revPre = ctx.createDelay(0.1);
+    revPre.delayTime.value = 0.012;
+    const conv = ctx.createConvolver();
+    conv.normalize = false;
+    const ir = roomImpulse(ctx.sampleRate);
+    const irBuf = ctx.createBuffer(2, ir[0].length, ctx.sampleRate);
+    irBuf.copyToChannel(ir[0], 0);
+    irBuf.copyToChannel(ir[1], 1);
+    conv.buffer = irBuf;
+    const revGain = gainNode(ctx, 0);
+    link(sumB, revIn, revPre, biquad(ctx, 'highpass', 220), conv, biquad(ctx, 'lowpass', 7500), revGain, sumC);
+
+    // Dynamics and output protection
+    const glue = ctx.createDynamicsCompressor();
+    glue.knee.value = 10;
+    glue.attack.value = 0.015;
+    glue.release.value = 0.25;
+    const post = gainNode(ctx, dbToGain(2));
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -2.5;
+    limiter.knee.value = 0;
+    limiter.ratio.value = 20;
+    limiter.attack.value = 0.001;
+    limiter.release.value = 0.12;
+    const clipIn = gainNode(ctx, 0.5);
+    const clip = shaper(ctx, SOFT_CLIP, 'none');
+    link(sumC, glue, post, limiter, clipIn, clip);
+
+    function apply(s, smooth = true) {
+      const t = ctx.currentTime;
+      const set = (param, v) => {
+        if (smooth) param.setTargetAtTime(v, t, 0.04);
+        else param.value = v;
+      };
+      set(hfGain.gain, 0.9 * s.hf);
+      set(mud.gain, -3 * s.clarity);
+      set(presence.gain, 2.5 * s.clarity);
+      set(air.gain, 4 * s.clarity);
+      set(lowShelf.gain, 5 * s.bass);
+      set(bassGain.gain, 0.45 * s.bass);
+      set(widenL.gain, s.width);
+      set(widenR.gain, -s.width);
+      const xf = 0.22 * s.space;
+      set(xfGain.gain, xf);
+      set(direct.gain, 1 / (1 + xf * 0.6));
+      set(revGain.gain, 0.3 * s.space);
+      set(glue.threshold, -24 * s.punch);
+      set(glue.ratio, 1 + 2.5 * s.punch);
+    }
+    apply(settings, false);
+    return { input, output: clip, apply };
+  }
+
+  // Stereo analysers behind a filter chain; returns per-channel sample buffers.
+  function stereoTap(ctx, node, filters) {
+    const split = ctx.createChannelSplitter(2);
+    link(node, ...filters, split);
+    const taps = [ctx.createAnalyser(), ctx.createAnalyser()];
+    taps.forEach((a, c) => {
+      a.fftSize = 4096;
+      split.connect(a, c);
+      a.connect(sinkOf(ctx));
+    });
+    const bufs = [new Float32Array(4096), new Float32Array(4096)];
+    return () => {
+      taps[0].getFloatTimeDomainData(bufs[0]);
+      taps[1].getFloatTimeDomainData(bufs[1]);
+      return bufs;
+    };
+  }
+
+  // Loudness (K-weighted, roughly ITU-R BS.1770) and stereo width (above 300 Hz,
+  // so kick and bass don't hide the image).
+  function makeMeter(ctx, node) {
+    const loudTap = stereoTap(ctx, node, [biquad(ctx, 'highpass', 60), biquad(ctx, 'highshelf', 1500, Math.SQRT1_2, 4)]);
+    const widthTap = stereoTap(ctx, node, [butter4(ctx, 'highpass', 300)]);
+    return {
+      read() {
+        const [kl, kr] = loudTap();
+        let e = 0;
+        for (let i = 0; i < kl.length; i++) e += kl[i] * kl[i] + kr[i] * kr[i];
+        const [wl, wr] = widthTap();
+        let m = 0, s = 0;
+        for (let i = 0; i < wl.length; i++) {
+          const mm = (wl[i] + wr[i]) * 0.5, ss = (wl[i] - wr[i]) * 0.5;
+          m += mm * mm;
+          s += ss * ss;
+        }
+        const n = kl.length;
+        return { e: e / n, m: m / n, s: s / n };
+      },
+    };
+  }
+
+  function makeSpectrum(ctx, node) {
+    const a = ctx.createAnalyser();
+    a.fftSize = 8192;
+    a.smoothingTimeConstant = 0.78;
+    node.connect(a);
+    a.connect(sinkOf(ctx));
+    return a;
+  }
+
+  // ============================================================
+  //  Offline rendering: whole-file export and still previews
+  // ============================================================
+  async function renderEnhanced(buffer, settings, onProgress) {
+    const sr = buffer.sampleRate;
+    const tail = 1.2;
+    const total = buffer.duration + tail;
+    const off = new OfflineAudioContext(2, Math.ceil(total * sr), sr);
+    const src = off.createBufferSource();
+    src.buffer = buffer;
+    const fx = buildEnhancer(off, settings);
+    src.connect(fx.input);
+    fx.output.connect(off.destination);
+    src.start(0);
+    if (onProgress) {
+      const step = Math.max(1, total / 25);
+      for (let t = step; t < total - 0.05; t += step) {
+        off.suspend(t).then(() => { onProgress(t / total); off.resume(); }, () => {});
+      }
+    }
+    const rendered = await off.startRendering();
+    // Drop the processing delay at the front so the file lines up with the original.
+    const skip = Math.round(LATENCY * sr);
+    const out = new AudioBuffer({ length: rendered.length - skip, numberOfChannels: 2, sampleRate: sr });
+    for (let c = 0; c < 2; c++) out.copyToChannel(rendered.getChannelData(c).subarray(skip), c);
+    return out;
+  }
+
+  // Renders a few seconds of dry + processed audio and reads both spectra and
+  // levels, so the display shows a real before/after picture before playback.
+  async function previewSnapshot(buffer, settings, startAt) {
+    const sr = buffer.sampleRate;
+    const dur = 3.4;
+    const off = new OfflineAudioContext(2, Math.ceil(dur * sr), sr);
+    const src = off.createBufferSource();
+    src.buffer = buffer;
+    src.loop = true;
+    const bus = forceChannels(gainNode(off), 2);
+    const dryDelay = off.createDelay(0.1);
+    dryDelay.delayTime.value = LATENCY;
+    const fx = buildEnhancer(off, settings);
+    src.connect(bus);
+    bus.connect(dryDelay);
+    bus.connect(fx.input);
+    const specDry = makeSpectrum(off, dryDelay);
+    const specWet = makeSpectrum(off, fx.output);
+    specDry.smoothingTimeConstant = specWet.smoothingTimeConstant = 0;
+    const mDry = makeMeter(off, dryDelay);
+    const mWet = makeMeter(off, fx.output);
+    const bins = specDry.frequencyBinCount;
+    const accDry = new Float64Array(bins);
+    const accWet = new Float64Array(bins);
+    const tmp = new Float32Array(bins);
+    const lvl = { dry: 0, wet: 0, dm: 0, ds: 0, wm: 0, ws: 0 };
+    let reads = 0;
+    for (let t = 1.0; t < dur - 0.1; t += 0.2) {
+      off.suspend(t).then(() => {
+        specDry.getFloatFrequencyData(tmp);
+        for (let i = 0; i < bins; i++) accDry[i] += Math.pow(10, Math.max(tmp[i], -200) / 10);
+        specWet.getFloatFrequencyData(tmp);
+        for (let i = 0; i < bins; i++) accWet[i] += Math.pow(10, Math.max(tmp[i], -200) / 10);
+        const d = mDry.read(), w = mWet.read();
+        lvl.dry += d.e; lvl.wet += w.e;
+        lvl.dm += d.m; lvl.ds += d.s; lvl.wm += w.m; lvl.ws += w.s;
+        reads++;
+        off.resume();
+      }, () => {});
+    }
+    src.start(0, startAt % buffer.duration);
+    await off.startRendering();
+    const toDb = (acc) => Float32Array.from(acc, (p) => 10 * Math.log10(p / reads + 1e-30));
+    return {
+      sampleRate: sr,
+      dry: toDb(accDry),
+      wet: toDb(accWet),
+      levels: lvl,
+    };
+  }
+
+  // ============================================================
+  //  Demo track: a short synthesized loop, then degraded the way a
+  //  128 kbps MP3 is (brick-wall cut at 16 kHz, narrowed stereo).
+  // ============================================================
+
+  // Linear-phase low-pass FIR (windowed sinc, Blackman): about 250 Hz wide
+  // transition at 48 kHz and ~75 dB stop band, like a codec's hard ceiling.
+  function brickWallFir(sr, cutoff, half = 512) {
+    const n = half * 2 + 1;
+    const h = new Float32Array(n);
+    const fc = cutoff / sr;
+    for (let i = 0; i < n; i++) {
+      const k = i - half;
+      const sinc = k === 0 ? 2 * fc : Math.sin(2 * Math.PI * fc * k) / (Math.PI * k);
+      const w = 0.42 - 0.5 * Math.cos((2 * Math.PI * i) / (n - 1)) + 0.08 * Math.cos((4 * Math.PI * i) / (n - 1));
+      h[i] = sinc * w;
+    }
+    return h;
+  }
+
+  async function makeDemo(sr) {
+    const bpm = 96;
+    const beat = 60 / bpm;
+    const bars = 8;
+    const dur = bars * 4 * beat;
+    const firHalf = 512;
+    const off = new OfflineAudioContext(2, Math.ceil(dur * sr) + firHalf, sr);
+    const rnd = mulberry32(7);
+    const noise = off.createBuffer(1, sr, sr);
+    {
+      const d = noise.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = rnd() * 2 - 1;
+    }
+    const mix = gainNode(off, 0.7);
+    const glue = off.createDynamicsCompressor();
+    glue.threshold.value = -16;
+    glue.ratio.value = 3;
+    glue.attack.value = 0.008;
+    glue.release.value = 0.15;
+    // "Codec": hard ceiling just under 16 kHz and a narrower image.
+    const codec = off.createConvolver();
+    codec.normalize = false;
+    const fir = brickWallFir(sr, Math.min(15800, sr * 0.45), firHalf);
+    const firBuf = off.createBuffer(1, fir.length, sr);
+    firBuf.copyToChannel(fir, 0);
+    codec.buffer = firBuf;
+    const split = off.createChannelSplitter(2);
+    const merge = off.createChannelMerger(2);
+    const k = 0.7;
+    const ll = gainNode(off, (1 + k) / 2), lr = gainNode(off, (1 - k) / 2);
+    const rl = gainNode(off, (1 - k) / 2), rr = gainNode(off, (1 + k) / 2);
+    link(mix, glue, codec, split);
+    split.connect(ll, 0); split.connect(rl, 0);
+    split.connect(lr, 1); split.connect(rr, 1);
+    ll.connect(merge, 0, 0); lr.connect(merge, 0, 0);
+    rl.connect(merge, 0, 1); rr.connect(merge, 0, 1);
+    merge.connect(off.destination);
+
+    const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
+    const pan = (v) => { const p = off.createStereoPanner(); p.pan.value = v; p.connect(mix); return p; };
+    const env = (g, t, peak, attack, len) => {
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(peak, t + attack);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    };
+    const noiseHit = (t, filters, peak, len, panV) => {
+      const n = off.createBufferSource();
+      n.buffer = noise;
+      const g = gainNode(off, 0);
+      link(n, ...filters, g, pan(panV));
+      env(g, t, peak, 0.002, len);
+      n.start(t, rnd() * 0.5);
+      n.stop(t + len + 0.02);
+    };
+
+    function kick(t) {
+      const o = off.createOscillator();
+      o.frequency.setValueAtTime(150, t);
+      o.frequency.exponentialRampToValueAtTime(45, t + 0.13);
+      const g = gainNode(off, 0);
+      link(o, g, pan(0));
+      env(g, t, 0.95, 0.004, 0.42);
+      o.start(t);
+      o.stop(t + 0.45);
+    }
+    function snare(t) {
+      noiseHit(t, [biquad(off, 'bandpass', 2000, 0.7)], 0.55, 0.22, 0.05);
+      noiseHit(t, [biquad(off, 'highpass', 5000)], 0.1, 0.12, 0.05);
+      const o = off.createOscillator();
+      o.type = 'triangle';
+      o.frequency.value = 190;
+      const g = gainNode(off, 0);
+      link(o, g, pan(0.05));
+      env(g, t, 0.35, 0.002, 0.1);
+      o.start(t);
+      o.stop(t + 0.12);
+    }
+    function hat(t, open) {
+      noiseHit(t, [biquad(off, 'highpass', 7000)], open ? 0.06 : 0.045, open ? 0.3 : 0.05, 0.4);
+    }
+    function bass(t, midi, len) {
+      const g = gainNode(off, 0);
+      const f = biquad(off, 'lowpass', 1200, 3);
+      f.frequency.setValueAtTime(1300, t);
+      f.frequency.exponentialRampToValueAtTime(380, t + 0.18);
+      const saw = off.createOscillator();
+      saw.type = 'sawtooth';
+      saw.frequency.value = mtof(midi);
+      const sub = off.createOscillator();
+      sub.frequency.value = mtof(midi);
+      const subG = gainNode(off, 0.6);
+      link(saw, f, g);
+      link(sub, subG, g);
+      g.connect(pan(0));
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.2, t + 0.01);
+      g.gain.setTargetAtTime(0.12, t + 0.01, 0.1);
+      g.gain.setTargetAtTime(0.0001, t + len, 0.02);
+      for (const o of [saw, sub]) { o.start(t); o.stop(t + len + 0.15); }
+    }
+    function pad(notes, t, len) {
+      notes.forEach((m, i) => {
+        for (const cents of [-8, 8]) {
+          const o = off.createOscillator();
+          o.type = 'sawtooth';
+          o.frequency.value = mtof(m);
+          o.detune.value = cents;
+          const g = gainNode(off, 0);
+          link(o, biquad(off, 'lowpass', 1900, 0.5), g, pan((i % 2 ? 0.6 : -0.6) * (cents > 0 ? 1 : -1)));
+          g.gain.setValueAtTime(0, t);
+          g.gain.linearRampToValueAtTime(0.022, t + 0.35);
+          g.gain.setValueAtTime(0.022, t + len);
+          g.gain.linearRampToValueAtTime(0, t + len + 0.5);
+          o.start(t);
+          o.stop(t + len + 0.55);
+        }
+      });
+    }
+    function pluck(t, midi, panV) {
+      const o = off.createOscillator();
+      o.type = 'square';
+      o.frequency.value = mtof(midi);
+      const g = gainNode(off, 0);
+      link(o, biquad(off, 'lowpass', 4200, 0.9), g, pan(panV));
+      env(g, t, 0.05, 0.003, 0.24);
+      o.start(t);
+      o.stop(t + 0.26);
+    }
+
+    const chords = [
+      { root: 45, pad: [57, 60, 64, 69] }, // Am
+      { root: 41, pad: [57, 60, 65, 69] }, // F
+      { root: 48, pad: [55, 60, 64, 67] }, // C
+      { root: 43, pad: [55, 59, 62, 67] }, // G
+    ];
+    const arp = [0, 1, 2, 3, 2, 1, 2, 3, 0, 1, 2, 3, 3, 2, 1, 2];
+    for (let bar = 0; bar < bars; bar++) {
+      const t0 = bar * 4 * beat;
+      const ch = chords[bar % 4];
+      pad(ch.pad, t0, 4 * beat - 0.05);
+      for (const b of [0, 1.5, 2, bar % 2 ? 2.75 : 3.5]) kick(t0 + b * beat);
+      snare(t0 + beat);
+      snare(t0 + 3 * beat);
+      for (let e = 0; e < 8; e++) hat(t0 + e * beat / 2, e === 7);
+      for (let e = 0; e < 8; e++) bass(t0 + e * beat / 2, ch.root + (e === 6 ? 12 : 0), beat / 2 * 0.8);
+      if (bar >= 2) {
+        for (let s = 0; s < 16; s++) pluck(t0 + s * beat / 4, ch.pad[arp[s]] + 12, s % 2 ? 0.6 : -0.6);
+      }
+    }
+    const rendered = await off.startRendering();
+    // Remove the FIR's delay so the loop starts on the downbeat.
+    const buf = off.createBuffer(2, rendered.length - firHalf, sr);
+    for (let c = 0; c < 2; c++) buf.copyToChannel(rendered.getChannelData(c).subarray(firHalf), c);
+    let peak = 0;
+    for (let c = 0; c < 2; c++) {
+      const d = buf.getChannelData(c);
+      for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i]));
+    }
+    const g = dbToGain(-1) / (peak || 1);
+    for (let c = 0; c < 2; c++) {
+      const d = buf.getChannelData(c);
+      for (let i = 0; i < d.length; i++) d[i] *= g;
+    }
+    return buf;
+  }
+
+  // ============================================================
+  //  WAV + ZIP encoding
+  // ============================================================
+  function encodeWav16(buf) {
+    const ch = buf.numberOfChannels;
+    const len = buf.length;
+    const sr = buf.sampleRate;
+    const dataBytes = len * ch * 2;
+    const ab = new ArrayBuffer(44 + dataBytes);
+    const v = new DataView(ab);
+    const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    str(0, 'RIFF'); v.setUint32(4, 36 + dataBytes, true); str(8, 'WAVE');
+    str(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, ch, true);
+    v.setUint32(24, sr, true); v.setUint32(28, sr * ch * 2, true); v.setUint16(32, ch * 2, true); v.setUint16(34, 16, true);
+    str(36, 'data'); v.setUint32(40, dataBytes, true);
+    const chans = [];
+    for (let c = 0; c < ch; c++) chans.push(buf.getChannelData(c));
+    const rnd = mulberry32(1);
+    const pcm = new Int16Array(ab, 44, len * ch);
+    let o = 0;
+    for (let i = 0; i < len; i++) {
+      for (let c = 0; c < ch; c++) {
+        const dither = rnd() - rnd(); // TPDF, ±1 LSB
+        pcm[o++] = clamp(Math.round(chans[c][i] * 32767 + dither), -32768, 32767);
+      }
+    }
+    return ab;
+  }
+
+  const CRC_TABLE = (() => {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+  function crc32(bytes) {
+    let c = 0xFFFFFFFF;
+    for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  // Single-file ZIP, stored (no compression), UTF-8 file name.
+  function zipSingle(name, data) {
+    const bytes = new Uint8Array(data);
+    const nameBytes = new TextEncoder().encode(name);
+    const crc = crc32(bytes);
+    const now = new Date();
+    const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+    const dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+    const local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034B50, true);
+    local.setUint16(4, 20, true);
+    local.setUint16(6, 0x0800, true);
+    local.setUint16(8, 0, true);
+    local.setUint16(10, dosTime, true);
+    local.setUint16(12, dosDate, true);
+    local.setUint32(14, crc, true);
+    local.setUint32(18, bytes.length, true);
+    local.setUint32(22, bytes.length, true);
+    local.setUint16(26, nameBytes.length, true);
+    local.setUint16(28, 0, true);
+    const central = new DataView(new ArrayBuffer(46));
+    central.setUint32(0, 0x02014B50, true);
+    central.setUint16(4, 20, true);
+    central.setUint16(6, 20, true);
+    central.setUint16(8, 0x0800, true);
+    central.setUint16(10, 0, true);
+    central.setUint16(12, dosTime, true);
+    central.setUint16(14, dosDate, true);
+    central.setUint32(16, crc, true);
+    central.setUint32(20, bytes.length, true);
+    central.setUint32(24, bytes.length, true);
+    central.setUint16(28, nameBytes.length, true);
+    central.setUint32(42, 0, true);
+    const centralOffset = 30 + nameBytes.length + bytes.length;
+    const end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054B50, true);
+    end.setUint16(8, 1, true);
+    end.setUint16(10, 1, true);
+    end.setUint32(12, 46 + nameBytes.length, true);
+    end.setUint32(16, centralOffset, true);
+    return new Blob([local, nameBytes, bytes, central, nameBytes, end], { type: 'application/zip' });
+  }
+
+  // Exposed for the automated checks in tests/verify-dsp.mjs
+  window.__refiner = { buildEnhancer, renderEnhanced, previewSnapshot, makeDemo, encodeWav16, zipSingle, LATENCY, PRESETS };
+
+  // ============================================================
+  //  App
+  // ============================================================
+  const $ = (id) => document.getElementById(id);
+  const STORE_KEY = 'audio-refiner.v1';
+  const saved = (() => {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch { return {}; }
+  })();
+
+  const state = {
+    settings: { ...PRESETS[0].s, ...(saved.settings || {}) },
+    preset: saved.preset === undefined ? 'recommended' : saved.preset,
+    mode: 'wet',
+    match: saved.match !== false,
+    loop: saved.loop !== false,
+    buffer: null,
+    name: '',
+    playing: false,
+    offset: 0,
+    startedAt: 0,
+    source: null,
+    seeking: false,
+  };
+  const persist = () => {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify({ settings: state.settings, preset: state.preset, match: state.match, loop: state.loop }));
+    } catch { /* storage unavailable: settings just won't be remembered */ }
+  };
+
+  const AC = window.AudioContext || window.webkitAudioContext;
+  const ac = new AC({ latencyHint: 'playback' });
+
+  // Live graph: bus -> (delayed original | enhancer) -> A/B crossfade -> speakers
+  const bus = forceChannels(gainNode(ac), 2);
+  const dryDelay = ac.createDelay(0.1);
+  dryDelay.delayTime.value = LATENCY;
+  const dryGain = gainNode(ac, 0);
+  const fx = buildEnhancer(ac, state.settings);
+  const matchTrim = gainNode(ac, 1);
+  const wetGain = gainNode(ac, 1);
+  const master = gainNode(ac, 1);
+  bus.connect(dryDelay);
+  link(dryDelay, dryGain, master);
+  bus.connect(fx.input);
+  link(fx.output, matchTrim, wetGain, master);
+  master.connect(ac.destination);
+  const liveSpecDry = makeSpectrum(ac, dryDelay);
+  const liveSpecWet = makeSpectrum(ac, matchTrim);
+  const liveMeterDry = makeMeter(ac, dryDelay);
+  const liveMeterWet = makeMeter(ac, fx.output);
+
+  // ---------- controls ----------
+  const presetBox = $('presets');
+  for (const p of PRESETS) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip';
+    b.id = 'preset-' + p.id;
+    b.textContent = p.label;
+    b.addEventListener('click', () => {
+      state.preset = p.id;
+      state.settings = { ...p.s };
+      syncControls();
+      settingsChanged();
+    });
+    presetBox.appendChild(b);
+  }
+
+  const knobBox = $('knobs');
+  const sliders = {};
+  for (const p of PARAMS) {
+    const wrap = document.createElement('div');
+    wrap.className = 'knob';
+    wrap.innerHTML =
+      `<div class="knob-head"><label for="k-${p.key}">${p.label}</label><output id="o-${p.key}" for="k-${p.key}"></output></div>` +
+      `<input type="range" id="k-${p.key}" min="0" max="100" step="1">` +
+      `<p class="knob-note">${p.note}</p>`;
+    knobBox.appendChild(wrap);
+    const input = wrap.querySelector('input');
+    sliders[p.key] = { input, out: wrap.querySelector('output') };
+    input.addEventListener('input', () => {
+      state.settings[p.key] = input.value / 100;
+      state.preset = null;
+      paintSlider(p.key);
+      syncPresetChips();
+      settingsChanged();
+    });
+  }
+
+  function paintSlider(key) {
+    const { input, out } = sliders[key];
+    input.style.setProperty('--pct', input.value + '%');
+    out.textContent = input.value;
+  }
+  function syncPresetChips() {
+    for (const p of PRESETS) $('preset-' + p.id).setAttribute('aria-pressed', String(state.preset === p.id));
+  }
+  function syncControls() {
+    for (const p of PARAMS) {
+      sliders[p.key].input.value = Math.round(state.settings[p.key] * 100);
+      paintSlider(p.key);
+    }
+    syncPresetChips();
+    $('matchToggle').checked = state.match;
+    $('loopToggle').checked = state.loop;
+  }
+
+  let previewTimer = 0;
+  function settingsChanged() {
+    fx.apply(state.settings);
+    persist();
+    if (!state.playing) {
+      clearTimeout(previewTimer);
+      previewTimer = setTimeout(refreshPreview, 180);
+    }
+  }
+
+  $('matchToggle').addEventListener('change', (e) => {
+    state.match = e.target.checked;
+    persist();
+    if (!state.match) matchTrim.gain.setTargetAtTime(1, ac.currentTime, 0.1);
+    else if (loud.dry > 0 && loud.wet > 0) applyTrim();
+    if (!state.playing) drawStill();
+  });
+  $('loopToggle').addEventListener('change', (e) => {
+    state.loop = e.target.checked;
+    if (state.source) state.source.loop = state.loop;
+    persist();
+  });
+
+  // ---------- A/B ----------
+  function setMode(mode) {
+    state.mode = mode;
+    const t = ac.currentTime;
+    dryGain.gain.setTargetAtTime(mode === 'dry' ? 1 : 0, t, 0.012);
+    wetGain.gain.setTargetAtTime(mode === 'wet' ? 1 : 0, t, 0.012);
+    $('abDry').setAttribute('aria-pressed', String(mode === 'dry'));
+    $('abWet').setAttribute('aria-pressed', String(mode === 'wet'));
+  }
+  $('abDry').addEventListener('click', () => setMode('dry'));
+  $('abWet').addEventListener('click', () => setMode('wet'));
+
+  // ---------- transport ----------
+  const fmt = (s) => {
+    s = Math.max(0, Math.floor(s));
+    return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  };
+  function position() {
+    if (!state.buffer) return 0;
+    if (!state.playing) return state.offset;
+    return (state.offset + (ac.currentTime - state.startedAt)) % state.buffer.duration;
+  }
+  function setPlayIcon(playing) {
+    $('playBtn').setAttribute('aria-label', playing ? '一時停止' : '再生');
+    $('playIcon').innerHTML = playing
+      ? '<path d="M7 4h3.5a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm6.5 0H17a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3.5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/>'
+      : '<path d="M7 4.5v15a1 1 0 0 0 1.52.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 7 4.5Z"/>';
+  }
+  function startSource(at) {
+    const src = ac.createBufferSource();
+    src.buffer = state.buffer;
+    src.loop = state.loop;
+    src.connect(bus);
+    src.onended = () => {
+      if (state.source !== src) return;
+      state.source = null;
+      state.playing = false;
+      state.offset = 0;
+      setPlayIcon(false);
+      setSeek(0);
+      stillAfter = performance.now() + 1500;
+    };
+    src.start(0, at);
+    state.source = src;
+    state.startedAt = ac.currentTime;
+    state.offset = at;
+  }
+  function stopSource() {
+    if (!state.source) return;
+    const src = state.source;
+    state.source = null;
+    try { src.stop(); } catch { /* already stopped */ }
+    src.disconnect();
+  }
+  async function play() {
+    if (!state.buffer) return;
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* not supported */ }
+    await ac.resume();
+    startSource(state.offset % state.buffer.duration);
+    state.playing = true;
+    setPlayIcon(true);
+    $('screenMsg').hidden = true;
+    kickLoop();
+  }
+  function pause() {
+    state.offset = position();
+    stopSource();
+    state.playing = false;
+    setPlayIcon(false);
+    stillAfter = performance.now() + 1500;
+  }
+  $('playBtn').addEventListener('click', () => (state.playing ? pause() : play()));
+
+  const seek = $('seek');
+  function setSeek(v) {
+    seek.value = v;
+    seek.style.setProperty('--pct', v / 10 + '%');
+  }
+  seek.addEventListener('input', () => {
+    state.seeking = true;
+    seek.style.setProperty('--pct', seek.value / 10 + '%');
+    if (state.buffer) $('timeNow').textContent = fmt((seek.value / 1000) * state.buffer.duration);
+  });
+  seek.addEventListener('change', () => {
+    state.seeking = false;
+    if (!state.buffer) return;
+    const at = (seek.value / 1000) * state.buffer.duration;
+    if (state.playing) {
+      stopSource();
+      startSource(at);
+    } else {
+      state.offset = at;
+      clearTimeout(previewTimer);
+      previewTimer = setTimeout(refreshPreview, 120);
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.target.closest && e.target.closest('input, textarea, select')) return;
+    if (e.key === 'b' || e.key === 'B') {
+      setMode(state.mode === 'wet' ? 'dry' : 'wet');
+    } else if (e.key === ' ' && (e.target === document.body || e.target === document.documentElement)) {
+      e.preventDefault();
+      state.playing ? pause() : play();
+    }
+  });
+
+  // ---------- loading audio ----------
+  function setSource(buffer, name, meta) {
+    if (state.playing) pause();
+    state.buffer = buffer;
+    state.name = name;
+    state.offset = 0;
+    $('sourceName').textContent = name;
+    $('sourceMeta').textContent = meta;
+    $('timeTotal').textContent = fmt(buffer.duration);
+    $('timeNow').textContent = '0:00';
+    setSeek(0);
+    loud.dry = loud.wet = 0;
+    refreshPreview();
+  }
+
+  async function loadFile(file) {
+    if (!file) return;
+    $('sourceName').textContent = '読み込み中… ' + file.name;
+    $('sourceMeta').textContent = ' ';
+    try {
+      const data = await file.arrayBuffer();
+      const buffer = await ac.decodeAudioData(data);
+      const base = file.name.replace(/\.[^.]+$/, '');
+      setSource(buffer, base, `${(buffer.sampleRate / 1000).toFixed(1)} kHz · ${buffer.numberOfChannels === 1 ? 'モノラル' : 'ステレオ'} · ${fmt(buffer.duration)}`);
+    } catch (err) {
+      $('sourceName').textContent = 'このファイルは読み込めませんでした';
+      $('sourceMeta').textContent = '著作権保護付きの曲か、この端末が対応していない形式の可能性があります。MP3・m4a・WAVを試してください。';
+    }
+  }
+  $('fileInput').addEventListener('change', (e) => loadFile(e.target.files[0]));
+
+  const app = $('app');
+  app.addEventListener('dragover', (e) => { e.preventDefault(); app.classList.add('dropping'); });
+  app.addEventListener('dragleave', (e) => { if (e.target === app) app.classList.remove('dropping'); });
+  app.addEventListener('drop', (e) => {
+    e.preventDefault();
+    app.classList.remove('dropping');
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) loadFile(f);
+  });
+
+  // ---------- loudness matching ----------
+  const loud = { dry: 0, wet: 0, trim: 1, dm: 0, ds: 0, wm: 0, ws: 0 };
+  function applyTrim() {
+    loud.trim = clamp(Math.sqrt(loud.dry / loud.wet), 0.25, 1.41);
+    if (state.match) matchTrim.gain.setTargetAtTime(loud.trim, ac.currentTime, 0.35);
+  }
+  function measureLive() {
+    const d = liveMeterDry.read();
+    const w = liveMeterWet.read();
+    if (d.e < 1e-7) return; // silence: keep the last estimate
+    const a = loud.dry === 0 ? 1 : 0.06;
+    loud.dry += a * (d.e - loud.dry);
+    loud.wet += a * (w.e - loud.wet);
+    loud.dm += a * (d.m - loud.dm); loud.ds += a * (d.s - loud.ds);
+    loud.wm += a * (w.m - loud.wm); loud.ws += a * (w.s - loud.ws);
+    applyTrim();
+  }
+
+  // ---------- spectrum display ----------
+  const canvas = $('spectrum');
+  const g2 = canvas.getContext('2d');
+  let cssW = 0, cssH = 0;
+  function resize() {
+    const r = canvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    cssW = r.width; cssH = r.height;
+    canvas.width = Math.round(r.width * dpr);
+    canvas.height = Math.round(r.height * dpr);
+    g2.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  new ResizeObserver(() => { resize(); if (!state.playing) drawStill(); }).observe(canvas);
+
+  const colors = {};
+  function readColors() {
+    const cs = getComputedStyle(document.documentElement);
+    for (const k of ['screen-grid', 'screen-label', 'trace-dry', 'trace-wet', 'trace-wet-2', 'band']) {
+      colors[k] = cs.getPropertyValue('--' + k).trim();
+    }
+  }
+  readColors();
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readColors(); if (!state.playing) drawStill(); });
+  new MutationObserver(() => { readColors(); if (!state.playing) drawStill(); })
+    .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  const DB_TOP = -10, DB_BOT = -110;
+  function drawSpectrum(dry, wet, sr, wetOffsetDb) {
+    const W = cssW, H = cssH;
+    if (!W || !H) return;
+    const L = 38, R = 10, T = 26, B = 20;
+    const fMin = 20, fMax = Math.min(22000, sr / 2);
+    const binHz = sr / 2 / dry.length;
+    const logSpan = Math.log(fMax / fMin);
+    const xOf = (f) => L + (Math.log(f / fMin) / logSpan) * (W - L - R);
+    const fOf = (x) => fMin * Math.exp(((x - L) / (W - L - R)) * logSpan);
+    const yOf = (db) => T + ((DB_TOP - clamp(db, DB_BOT, DB_TOP)) / (DB_TOP - DB_BOT)) * (H - T - B);
+    g2.clearRect(0, 0, W, H);
+
+    // band that lossy codecs cut
+    const x16 = xOf(16000);
+    g2.fillStyle = colors.band;
+    g2.globalAlpha = 0.08;
+    g2.fillRect(x16, T, W - R - x16, H - T - B);
+    g2.globalAlpha = 1;
+
+    g2.font = '10px "IBM Plex Mono", ui-monospace, monospace';
+    g2.lineWidth = 1;
+    g2.strokeStyle = colors['screen-grid'];
+    g2.fillStyle = colors['screen-label'];
+    g2.textAlign = 'center';
+    g2.textBaseline = 'alphabetic';
+    for (const [f, lab] of [[50, '50'], [100, '100'], [200, '200'], [500, '500'], [1000, '1k'], [2000, '2k'], [5000, '5k'], [10000, '10k'], [20000, '20k']]) {
+      if (f > fMax) continue;
+      const x = Math.round(xOf(f)) + 0.5;
+      g2.beginPath(); g2.moveTo(x, T); g2.lineTo(x, H - B); g2.stroke();
+      g2.fillText(lab, x, H - 6);
+    }
+    g2.textAlign = 'right';
+    g2.textBaseline = 'middle';
+    for (let db = -20; db >= -100; db -= 20) {
+      const y = Math.round(yOf(db)) + 0.5;
+      g2.beginPath(); g2.moveTo(L, y); g2.lineTo(W - R, y); g2.stroke();
+      g2.fillText(String(db), L - 6, y);
+    }
+    g2.fillStyle = colors.band;
+    g2.textAlign = 'right';
+    g2.textBaseline = 'top';
+    g2.fillText('16k〜', W - R - 4, T + 4);
+
+    const sample = (arr, x, offset) => {
+      const f0 = fOf(x), f1 = fOf(x + 1);
+      if (f1 - f0 < binHz) {
+        const p = f0 / binHz;
+        const i = Math.floor(p), fr = p - i;
+        const a = arr[Math.min(i, arr.length - 1)], b = arr[Math.min(i + 1, arr.length - 1)];
+        return a + (b - a) * fr + offset;
+      }
+      let m = -Infinity;
+      for (let i = Math.floor(f0 / binHz); i <= Math.min(arr.length - 1, Math.floor(f1 / binHz)); i++) m = Math.max(m, arr[i]);
+      return m + offset;
+    };
+
+    // processed: filled area
+    const grad = g2.createLinearGradient(0, T, 0, H - B);
+    grad.addColorStop(0, colors['trace-wet-2']);
+    grad.addColorStop(1, colors['trace-wet']);
+    g2.beginPath();
+    g2.moveTo(L, H - B);
+    for (let x = L; x <= W - R; x++) g2.lineTo(x, yOf(sample(wet, x, wetOffsetDb)));
+    g2.lineTo(W - R, H - B);
+    g2.closePath();
+    g2.globalAlpha = 0.28;
+    g2.fillStyle = grad;
+    g2.fill();
+    g2.globalAlpha = 1;
+    g2.beginPath();
+    for (let x = L; x <= W - R; x++) {
+      const y = yOf(sample(wet, x, wetOffsetDb));
+      x === L ? g2.moveTo(x, y) : g2.lineTo(x, y);
+    }
+    g2.strokeStyle = grad;
+    g2.lineWidth = 1.6;
+    g2.stroke();
+
+    // original: line
+    g2.beginPath();
+    for (let x = L; x <= W - R; x++) {
+      const y = yOf(sample(dry, x, 0));
+      x === L ? g2.moveTo(x, y) : g2.lineTo(x, y);
+    }
+    g2.strokeStyle = colors['trace-dry'];
+    g2.lineWidth = 1.2;
+    g2.stroke();
+  }
+
+  function bandPowerDb(arr, sr, fLo, fHi, offset = 0) {
+    const binHz = sr / 2 / arr.length;
+    let p = 0;
+    for (let i = Math.ceil(fLo / binHz); i <= Math.min(arr.length - 1, Math.floor(fHi / binHz)); i++) {
+      p += Math.pow(10, (Math.max(arr[i], -200) + offset) / 10);
+    }
+    return 10 * Math.log10(p + 1e-30);
+  }
+
+  function updateReadouts(dry, wet, sr, wetOffsetDb, lv) {
+    const top = Math.min(20000, sr / 2);
+    const diff = bandPowerDb(wet, sr, 16000, top, wetOffsetDb) - bandPowerDb(dry, sr, 16000, top);
+    $('rHf').textContent = diff >= 40 ? '+40 dB 以上' : (diff >= 0 ? '+' : '−') + Math.abs(diff).toFixed(1) + ' dB';
+    const pct = (m, s) => (m + s > 0 ? Math.round((100 * s) / (m + s)) : 0);
+    if (lv && lv.dm + lv.ds > 0) $('rWidth').textContent = `${pct(lv.dm, lv.ds)}% → ${pct(lv.wm, lv.ws)}%`;
+    $('rTrim').textContent = state.match ? (gainToDb(loud.trim) >= 0 ? '+' : '−') + Math.abs(gainToDb(loud.trim)).toFixed(1) + ' dB' : 'オフ';
+  }
+
+  // Still picture (before playback / while paused), from an offline preview.
+  let still = null;
+  let previewSeq = 0;
+  async function refreshPreview() {
+    if (!state.buffer) return;
+    const seq = ++previewSeq;
+    const mid = state.offset || Math.min(state.buffer.duration * 0.35, 30);
+    let snap;
+    try {
+      snap = await previewSnapshot(state.buffer, state.settings, mid);
+    } catch {
+      if (seq === previewSeq && !still) $('screenMsg').textContent = '再生するとスペクトルが表示されます';
+      return;
+    }
+    if (seq !== previewSeq) return;
+    still = snap;
+    if (state.playing) return;
+    const lv = snap.levels;
+    if (lv.dry > 0 && lv.wet > 0) {
+      loud.dry = lv.dry; loud.wet = lv.wet;
+      loud.dm = lv.dm; loud.ds = lv.ds; loud.wm = lv.wm; loud.ws = lv.ws;
+      applyTrim();
+    }
+    $('screenMsg').hidden = true;
+    drawStill();
+  }
+  function drawStill() {
+    if (!still) return;
+    const off = state.match ? gainToDb(loud.trim) : 0;
+    drawSpectrum(still.dry, still.wet, still.sampleRate, off);
+    updateReadouts(still.dry, still.wet, still.sampleRate, off, loud);
+  }
+
+  // Live loop
+  const liveDry = new Float32Array(liveSpecDry.frequencyBinCount);
+  const liveWet = new Float32Array(liveSpecWet.frequencyBinCount);
+  let looping = false;
+  let stillAfter = 0;
+  let lastMeter = 0;
+  function frame(now) {
+    if (!state.playing && now > stillAfter) {
+      looping = false;
+      refreshPreview();
+      return;
+    }
+    if (state.buffer && !state.seeking) {
+      const pos = position();
+      setSeek(Math.round((pos / state.buffer.duration) * 1000));
+      $('timeNow').textContent = fmt(pos);
+    }
+    liveSpecDry.getFloatFrequencyData(liveDry);
+    liveSpecWet.getFloatFrequencyData(liveWet);
+    drawSpectrum(liveDry, liveWet, ac.sampleRate, 0);
+    if (state.playing && now - lastMeter > 100) {
+      lastMeter = now;
+      measureLive();
+      updateReadouts(liveDry, liveWet, ac.sampleRate, 0, loud);
+    }
+    requestAnimationFrame(frame);
+  }
+  function kickLoop() {
+    if (looping) return;
+    looping = true;
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- export ----------
+  const downloadsReady = window.claude && typeof window.claude.use === 'function'
+    ? window.claude.use('downloads').catch(() => null)
+    : Promise.resolve(null);
+
+  $('exportBtn').addEventListener('click', async () => {
+    if (!state.buffer) return;
+    const btn = $('exportBtn');
+    const status = $('exportStatus');
+    status.classList.remove('is-error');
+    btn.disabled = true;
+    try {
+      status.textContent = '書き出し中… 0%';
+      const out = await renderEnhanced(state.buffer, state.settings, (p) => {
+        status.textContent = `書き出し中… ${Math.round(p * 100)}%`;
+      });
+      status.textContent = 'ファイルを作成中…';
+      await new Promise((r) => setTimeout(r, 30));
+      const wav = encodeWav16(out);
+      const base = (state.name || 'audio').replace(/[\\/:*?"<>|]/g, '_');
+      const wavName = `${base}_refined.wav`;
+      const downloads = await downloadsReady;
+      if (downloads) {
+        const zip = zipSingle(wavName, wav);
+        try {
+          await downloads.save({ filename: `${base}_refined.zip`, data: zip });
+          status.textContent = `保存しました：${base}_refined.zip（開くと ${wavName} が出てきます）`;
+        } catch (err) {
+          const code = err && err.code;
+          if (code === 'declined') status.textContent = '保存をやめました。';
+          else if (code === 'extension_not_enabled' || code === 'rejected_extension') {
+            status.classList.add('is-error');
+            status.textContent = 'この画面ではZIPを保存できません。index.html をブラウザで直接開くと WAV を保存できます。';
+          } else if (code === 'rate_limited') {
+            status.textContent = '保存の確認がすでに開いています。そちらを閉じてからもう一度押してください。';
+          } else {
+            status.classList.add('is-error');
+            status.textContent = 'この画面では保存できませんでした。';
+          }
+        }
+      } else {
+        const url = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = wavName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        status.textContent = `保存しました：${wavName}`;
+      }
+    } catch (err) {
+      status.classList.add('is-error');
+      status.textContent = '書き出しに失敗しました：' + (err && err.message ? err.message : String(err));
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ---------- boot ----------
+  syncControls();
+  setMode('wet');
+  setPlayIcon(false);
+  makeDemo(ac.sampleRate).then((buf) => {
+    if (state.buffer) return; // user already picked a file
+    setSource(buf, 'デモ曲（合成音）', 'MP3 128kbps 相当に劣化させた状態 · 16kHz以上なし · ' + fmt(buf.duration));
+  }).catch((err) => {
+    $('sourceName').textContent = 'デモ曲を作れませんでした。自分の曲を開いてください。';
+    $('screenMsg').textContent = String(err && err.message ? err.message : err);
+  });
+})();
+</script>
+</body>
+</html>
